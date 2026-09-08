@@ -18,6 +18,7 @@ NOTION_DB_ASSISTANTES=   # ID de la base Assistantes
 NOTION_DB_CLIENTS=       # ID de la base Clients
 NOTION_DB_DECLARATIONS=  # ID de la base Déclarations
 SESSION_SECRET=          # optionnel — clé HMAC du cookie de session
+SITE_URL=                # optionnel — domaine, pour les URLs de partage
 ```
 
 Sans `SESSION_SECRET`, la clé de signature du cookie est dérivée de
@@ -72,6 +73,25 @@ endroit à modifier si une propriété est renommée dans Notion.
 4. **Attestation** — case obligatoire avant activation de l'envoi.
 5. **Confirmation** — récapitulatif de ce qui vient d'être enregistré, et
    possibilité d'enchaîner sur un autre client.
+
+## Partage et référencement
+
+L'aperçu de partage (Open Graph et Twitter) est généré par
+`src/app/opengraph-image.tsx` : logo sur pastille blanche, « Déclare tes
+heures » en Yellowtail, le tout sur le dégradé de la charte, en 1200 × 630.
+Les deux polices sont embarquées dans `src/app/_fonts/` pour que la génération
+ne dépende d'aucun appel réseau.
+
+Les URLs absolues des métadonnées viennent de `SITE_URL` si elle est définie,
+sinon de `VERCEL_PROJECT_PRODUCTION_URL` (fournie automatiquement par Vercel).
+
+La page n'est jamais indexée : `noindex, nofollow` en balise meta, directive
+`googlebot` dédiée, et en-tête HTTP `X-Robots-Tag` sur toutes les routes (il
+couvre aussi l'image de partage et les réponses d'API). Le `robots.txt`, lui,
+**autorise** l'exploration, et c'est volontaire : un `Disallow` empêcherait le
+robot de lire la page, donc de voir le `noindex` — Google pourrait alors
+indexer l'URL seule si un lien pointe dessus. Laisser explorer garantit que la
+directive est reçue.
 
 ## Modèle de sécurité
 

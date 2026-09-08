@@ -24,10 +24,55 @@ const openSans = Open_Sans({
   display: "swap",
 });
 
+/**
+ * Base des URLs absolues des métadonnées (image de partage comprise).
+ *
+ * Lue à l'exécution : sur Vercel, `VERCEL_PROJECT_PRODUCTION_URL` suffit et
+ * ne demande aucune configuration. `SITE_URL` permet de forcer un domaine
+ * personnalisé.
+ */
+function siteUrl(): URL {
+  const explicit = process.env.SITE_URL;
+  if (explicit) return new URL(explicit);
+  const vercel = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (vercel) return new URL(`https://${vercel}`);
+  return new URL("http://localhost:3000");
+}
+
 export const metadata: Metadata = {
+  metadataBase: siteUrl(),
   title: "Déclare tes heures — Win Time",
   description:
     "Le formulaire Win Time pour déclarer les heures passées chez tes clients.",
+  // Formulaire interne : il ne doit jamais ressortir dans un moteur de
+  // recherche. Le partage de lien, lui, reste possible.
+  robots: {
+    index: false,
+    follow: false,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+      "max-snippet": -1,
+      "max-image-preview": "none",
+      "max-video-preview": -1,
+    },
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Win Time",
+    locale: "fr_FR",
+    title: "Déclare tes heures",
+    description:
+      "Le formulaire Win Time pour déclarer tes heures chez tes clients.",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Déclare tes heures",
+    description:
+      "Le formulaire Win Time pour déclarer tes heures chez tes clients.",
+  },
 };
 
 export const viewport: Viewport = {
