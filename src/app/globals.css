@@ -222,13 +222,17 @@ label {
 
 /* Card resize (01) : la carte suit la hauteur de l'étape affichée. */
 .wt-card-sizer {
-  transition: height var(--resize-dur) var(--resize-ease);
+  transition: none;
   /* `hidden` clippe aussi les ombres des boutons sur les côtés ; `clip` avec
      une marge laisse respirer la largeur tout en tenant la hauteur animée. */
   overflow: hidden;
   overflow: clip;
   overflow-clip-margin: 16px;
   will-change: height;
+}
+
+.wt-card-sizer[data-animate-height="true"] {
+  transition: height var(--resize-dur) var(--resize-ease);
 }
 
 .wt-step-title {
@@ -425,9 +429,22 @@ label {
 
 .wt-actions {
   display: flex;
-  gap: 12px;
-  align-items: center;
+  gap: 10px;
+  /* `stretch` : les deux boutons partagent la même hauteur quoi qu'il arrive. */
+  align-items: stretch;
   margin-top: 22px;
+}
+
+.wt-actions .wt-btn {
+  /* Les libellés des actions tiennent sur une ligne : c'est ce qui garantit
+     des boutons de hauteur identique en mobile. */
+  white-space: nowrap;
+  font-size: 15px;
+  padding: 13px 20px;
+}
+
+.wt-actions .wt-btn-ghost {
+  padding: 11px 18px;
 }
 
 .wt-actions .wt-btn:not(.wt-btn-ghost) {
@@ -513,19 +530,16 @@ label {
 
 .wt-attestation {
   display: flex;
-  gap: 10px;
+  gap: 9px;
   align-items: center;
-  /* Bloc pleine largeur de la carte : chaque pixel gagné est de la taille de
-     texte en plus, la phrase devant tenir sur une seule ligne. */
-  width: calc(100% + 44px);
-  margin: 0 -22px;
+  width: 100%;
   text-align: left;
   background: var(--wt-blush);
   border: 2px solid #f0dfd8;
-  border-left: 0;
-  border-right: 0;
-  border-radius: 0;
-  padding: 14px 16px;
+  border-radius: var(--radius-field);
+  /* Rembourrage resserré : l'encadré reste dans les marges de la carte, c'est
+     la taille du texte qui s'ajuste pour tenir sur une ligne. */
+  padding: 13px 12px;
   cursor: pointer;
   transition: border-color var(--check-box) var(--check-ease);
 }

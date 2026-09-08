@@ -8,7 +8,6 @@ import type {
 
 import type { ClientOption } from "./notion-types";
 import { phoneKey } from "./phone";
-import { currentMonthRange } from "./time";
 
 /**
  * Accès Notion — exclusivement côté serveur.
@@ -19,17 +18,8 @@ import { currentMonthRange } from "./time";
  * cache) la data source correspondante au premier appel.
  */
 
-export type ForfaitInfo = {
-  /** Forfait mensuel en heures, null si aucun contrat / forfait renseigné. */
-  forfaitHours: number | null;
-  /** Minutes déjà déclarées ce mois-ci pour ce couple assistante/client. */
-  consumedMinutes: number;
-};
-
 const PHONE_PROPERTY = "Téléphone";
 const ASSISTANTE_CLIENTS_PROPERTY = "Clients";
-const CLIENT_CONTRAT_PROPERTY = "Contrat";
-const CONTRAT_FORFAIT_PROPERTY = "Forfait (h)";
 const DECLARATION_PERIODE_PROPERTY = "Période de déclaration";
 const DECLARATION_ASSISTANTE_PROPERTY = "Assistante déclarante";
 const DECLARATION_CLIENT_PROPERTY = "Client";
@@ -320,62 +310,4 @@ async function declarationTitleProperty(
     // Sans titre la page reste valide : on n'échoue pas la déclaration pour ça.
   }
   return null;
-}
-
-/**
- * Point sur la situation : forfait du client + minutes déjà déclarées sur le
- * mois calendaire en cours (fuseau Europe/Paris, sur la date de début de la
- * période déclarée).
- */
-export async function getForfaitInfo(
-  assistanteId: string,
-  clientId: string,
-): Promise<ForfaitInfo> {
-  // Séquentiel : les appels passent de toute façon par la file de throttle.
-  const forfaitHours = await readForfaitHours(clientId);
-  const consumedMinutes = await sumMonthMinutes(assistanteId, clientId);
-  return { forfaitHours, consumedMinutes };
-}
-
-async function readForfaitHours(clientId: string): Promise<number | null> {
-  const clientPage = await retrievePage(clientId);
-  if (!clientPage) return null;
-
-  const contratIds = await relationIds(clientPage, CLIENT_CONTRAT_PROPERTY);
-  for (const contratId of contratIds) {
-    const contrat = await retrievePage(contratId);
-    if (!contrat) continue;
-    const forfait = numberOf(contrat, CONTRAT_FORFAIT_PROPERTY);
-    if (typeof forfait === "number") return forfait;
-  }
-  return null;
-}
-
-async function sumMonthMinutes(
-  assistanteId: string,
-  clientId: string,
-): Promise<number> {
-  const month = currentMonthRange();
-  const pages = await queryAll(env("NOTION_DB_DECLARATIONS"), {
-    and: [
-      {
-        property: DECLARATION_ASSISTANTE_PROPERTY,
-        relation: { contains: assistanteId },
-      },
-      { property: DECLARATION_CLIENT_PROPERTY, relation: { contains: clientId } },
-      {
-        property: DECLARATION_PERIODE_PROPERTY,
-        date: { on_or_after: month.start },
-      },
-      {
-        property: DECLARATION_PERIODE_PROPERTY,
-        date: { on_or_before: month.end },
-      },
-    ],
-  } as QueryDataSourceParameters["filter"]);
-
-  return pages.reduce(
-    (total, page) => total + (numberOf(page, DECLARATION_MINUTES_PROPERTY) ?? 0),
-    0,
-  );
 }

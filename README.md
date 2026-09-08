@@ -17,13 +17,12 @@ NOTION_TOKEN=            # token d'intégration interne Notion
 NOTION_DB_ASSISTANTES=   # ID de la base Assistantes
 NOTION_DB_CLIENTS=       # ID de la base Clients
 NOTION_DB_DECLARATIONS=  # ID de la base Déclarations
-NOTION_DB_CONTRATS=      # ID de la base Contrats
 SESSION_SECRET=          # optionnel — clé HMAC du cookie de session
 ```
 
 Sans `SESSION_SECRET`, la clé de signature du cookie est dérivée de
-`NOTION_TOKEN`. Sur Vercel, définir les cinq premières variables dans les
-réglages du projet ; l'intégration Notion doit être partagée avec les quatre
+`NOTION_TOKEN`. Sur Vercel, définir les quatre premières variables dans les
+réglages du projet ; l'intégration Notion doit être partagée avec les trois
 bases.
 
 Le SDK Notion v5 interroge des *data sources*, plus des bases : l'application
@@ -47,8 +46,6 @@ TypeScript seul.
 |---|---|---|---|
 | Assistantes | `Téléphone` | Rich text (ou téléphone) | identifiant de connexion |
 | Assistantes | `Clients` | Relation → Clients | clients assignés |
-| Clients | `Contrat` | Relation → Contrats | contrat(s) du client |
-| Contrats | `Forfait (h)` | Number | volume mensuel prévu |
 | Déclarations | `Période de déclaration` | Date (début + fin) | période déclarée |
 | Déclarations | `Assistante déclarante` | Relation → Assistantes | autrice de la déclaration |
 | Déclarations | `Client` | Relation → Clients | client concerné |
@@ -73,10 +70,8 @@ endroit à modifier si une propriété est renommée dans Notion.
    clic = début, survol = aperçu de la plage, deuxième clic = fin), et un seul
    champ de temps affiché `HHhMM` qui se remplit par la droite (`215` → 02h15).
 4. **Attestation** — case obligatoire avant activation de l'envoi.
-5. **Point sur la situation** — cumul du mois calendaire en cours (fuseau
-   Europe/Paris, sur la date de début de la période) face au `Forfait (h)` du
-   contrat, avec barre de progression animée et état d'alerte en cas de
-   dépassement.
+5. **Confirmation** — récapitulatif de ce qui vient d'être enregistré, et
+   possibilité d'enchaîner sur un autre client.
 
 ## Modèle de sécurité
 
@@ -96,8 +91,6 @@ endroit à modifier si une propriété est renommée dans Notion.
 - Téléphone en double dans la base Assistantes : première occurrence retenue,
   avertissement dans les logs serveur.
 - Assistante sans client : message clair, pas d'erreur bloquante.
-- Client sans contrat ou sans `Forfait (h)` : confirmation affichée sans barre
-  de progression, avec un message neutre.
 - Rate limit Notion (3 req/s) : toutes les requêtes passent par une file
   d'attente sérialisée avec un écart minimal de 350 ms.
 - Échec d'écriture : on reste sur l'étape d'envoi, la saisie est conservée et

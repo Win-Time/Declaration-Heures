@@ -32,7 +32,7 @@ const HEADINGS: Record<Step, { title: string; subtitle: string }> = {
   client: { title: "Ton client", subtitle: "Choisis chez qui tu as travaillé." },
   declaration: { title: "Ta déclaration", subtitle: "Période et temps passé." },
   attestation: { title: "Dernière étape", subtitle: "Vérifie et valide." },
-  confirmation: { title: "C'est envoyé ⭐", subtitle: "Merci pour ta rigueur." },
+  confirmation: { title: "C'est envoyé", subtitle: "Merci pour ta rigueur." },
 };
 
 export function DeclarationWizard() {
@@ -159,8 +159,6 @@ export function DeclarationWizard() {
         declarationId: data.declarationId,
         clientName: data.clientName,
         totalMinutes: data.totalMinutes,
-        forfaitHours: data.forfaitHours,
-        consumedMinutes: data.consumedMinutes,
       });
       goTo("confirmation");
     } catch {

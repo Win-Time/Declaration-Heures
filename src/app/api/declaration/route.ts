@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 
-import {
-  createDeclaration,
-  getForfaitInfo,
-  listClientsForAssistante,
-} from "@/lib/notion";
+import { createDeclaration, listClientsForAssistante } from "@/lib/notion";
 import { readSession } from "@/lib/session";
 import { toTotalMinutes } from "@/lib/time";
 
@@ -82,19 +78,11 @@ export async function POST(request: Request) {
       totalMinutes,
     });
 
-    // Le point sur la situation inclut la déclaration qui vient d'être créée.
-    const { forfaitHours, consumedMinutes } = await getForfaitInfo(
-      assistanteId,
-      selected.id,
-    );
-
     return NextResponse.json({
       ok: true,
       declarationId,
       clientName: selected.name,
       totalMinutes,
-      forfaitHours,
-      consumedMinutes,
     });
   } catch (error) {
     console.error("[win-time] écriture de la déclaration impossible", error);

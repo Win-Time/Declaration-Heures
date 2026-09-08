@@ -18,6 +18,11 @@ import {
  *   avec fondu + flou. Aucun changement d'écran n'est sec.
  * - Hauteur de la carte : card resize (transitions.dev n°1) — la carte suit la
  *   hauteur de l'étape affichée au lieu de sauter.
+ *
+ * La hauteur n'est animée qu'au changement d'étape. Quand c'est le contenu qui
+ * s'anime (le calendrier qui se déplie), la carte le suit image par image :
+ * deux transitions de hauteur imbriquées se poursuivaient l'une l'autre et
+ * rendaient l'ouverture saccadée.
  */
 export function StepShell({
   stepKey,
@@ -30,13 +35,20 @@ export function StepShell({
 }) {
   const reduce = useReducedMotion();
   const contentRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | "auto">("auto");
+  const sizerRef = useRef<HTMLDivElement>(null);
+  const [animateHeight, setAnimateHeight] = useState(false);
 
   useEffect(() => {
     const node = contentRef.current;
-    if (!node) return;
+    const sizer = sizerRef.current;
+    if (!node || !sizer) return;
 
-    const measure = () => setHeight(node.offsetHeight);
+    // La hauteur est écrite directement dans le DOM plutôt que passée par un
+    // state : un aller-retour React coûtait une image, visible en début
+    // d'ouverture du calendrier sous forme d'à-coup.
+    const measure = () => {
+      sizer.style.height = `${node.offsetHeight}px`;
+    };
     measure();
 
     const observer = new ResizeObserver(measure);
@@ -44,13 +56,26 @@ export function StepShell({
     return () => observer.disconnect();
   }, [stepKey]);
 
+  // Fenêtre d'animation ouverte le temps de la transition d'étape, puis
+  // refermée : ensuite la carte colle au contenu sans latence.
+  useEffect(() => {
+    if (reduce) return;
+    setAnimateHeight(true);
+    const timer = window.setTimeout(
+      () => setAnimateHeight(false),
+      PAGE_DURATION * 1000 + 120,
+    );
+    return () => window.clearTimeout(timer);
+  }, [stepKey, reduce]);
+
   const distance = reduce ? 0 : PAGE_SLIDE_DISTANCE * direction;
   const blur = reduce ? 0 : PAGE_BLUR;
 
   return (
     <div
       className="wt-card-sizer"
-      style={{ height: height === "auto" ? undefined : height }}
+      ref={sizerRef}
+      data-animate-height={animateHeight ? "true" : "false"}
     >
       <AnimatePresence initial={false} mode="popLayout">
         <motion.div

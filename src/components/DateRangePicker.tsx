@@ -49,23 +49,51 @@ export function DateRangePicker({
     return { year, month };
   });
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
 
-  // Fermeture au clic extérieur et à Échap.
+  // Fermeture au clic extérieur et à Échap. On écoute `click` et non
+  // `pointerdown` : un glissement de doigt pour faire défiler la page ne
+  // produit pas de clic, le calendrier ne se referme donc plus au scroll.
   useEffect(() => {
     if (!open) return;
-    const onPointerDown = (event: PointerEvent) => {
+    const onClick = (event: MouseEvent) => {
       if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") setOpen(false);
     };
-    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("click", onClick);
     document.addEventListener("keydown", onKeyDown);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("click", onClick);
       document.removeEventListener("keydown", onKeyDown);
     };
   }, [open]);
+
+  /**
+   * Le calendrier dépasse souvent le bas de l'écran en mobile. Une fois le
+   * dépliage terminé, on ramène la page juste ce qu'il faut pour le voir en
+   * entier — sans bouger si l'utilisateur a déjà tout sous les yeux.
+   */
+  useEffect(() => {
+    if (!open) return;
+    const timer = window.setTimeout(() => {
+      const panel = panelRef.current;
+      if (!panel) return;
+      const box = panel.getBoundingClientRect();
+      const margin = 16;
+      const overflowBottom = box.bottom - (window.innerHeight - margin);
+      if (overflowBottom <= 0) return;
+      // On ne remonte jamais le haut du calendrier au-dessus de la zone visible.
+      const delta = Math.min(overflowBottom, box.top - margin);
+      if (delta <= 0) return;
+      window.scrollBy({
+        top: delta,
+        behavior: reduce ? "auto" : "smooth",
+      });
+    }, 320);
+    return () => window.clearTimeout(timer);
+  }, [open, reduce]);
 
   const picking = start !== null && end === null;
   // Pendant la sélection, la plage affichée suit le curseur.
@@ -122,6 +150,7 @@ export function DateRangePicker({
         {open ? (
           <motion.div
             className="wt-calendar"
+            ref={panelRef}
             role="dialog"
             aria-label="Choisir la période"
             initial={

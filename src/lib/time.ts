@@ -31,21 +31,3 @@ export function todayIso(timeZone: string = PARIS_TZ): string {
     day: "2-digit",
   }).format(new Date());
 }
-
-/**
- * Bornes du mois calendaire en cours (fuseau Europe/Paris par défaut),
- * au format YYYY-MM-DD — le format attendu par les filtres date de Notion.
- */
-export function currentMonthRange(timeZone: string = PARIS_TZ): {
-  start: string;
-  end: string;
-} {
-  const today = todayIso(timeZone);
-  const [year, month] = today.split("-").map(Number);
-  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
-  const mm = String(month).padStart(2, "0");
-  return {
-    start: `${year}-${mm}-01`,
-    end: `${year}-${mm}-${String(lastDay).padStart(2, "0")}`,
-  };
-}
