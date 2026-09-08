@@ -1,0 +1,815 @@
+/* ==========================================================================
+   Win Time — feuille de style globale
+   - Tokens `--wt-*` : charte visuelle Win Time (source de vérité).
+   - Tokens de mouvement : transitions.dev (skills/transitions-dev/_root.css),
+     conservés à leurs valeurs d'origine et recolorés à la charte.
+   ========================================================================== */
+
+:root {
+  /* ── Couleurs ── */
+  --wt-magenta: #e42761;
+  --wt-pink: #e13356;
+  --wt-orange: #e8722f;
+  --wt-red: #d93333;
+  --wt-script: #ed4c67;
+  --wt-yellow: #f8cd1e;
+  --wt-ink: #3d3d3c;
+  --wt-blush: #fdf4f0;
+  --wt-white: #ffffff;
+
+  /* ── Dégradés ── */
+  --wt-grad: linear-gradient(160deg, #e42761 0%, #e8722f 100%);
+  --wt-grad-post: linear-gradient(170deg, #e13356 0%, #db4841 55%, #d55a30 100%);
+  --wt-grad-alert: linear-gradient(160deg, #d93333 0%, #e8722f 100%);
+
+  /* ── Typographie ── */
+  --font-script: var(--font-yellowtail), "Brush Script MT", cursive;
+  --font-title: var(--font-questrial), "Century Gothic", sans-serif;
+  --font-body: var(--font-open-sans), system-ui, sans-serif;
+
+  /* ── Formes ── */
+  --radius-card: 24px;
+  --radius-field: 14px;
+  --radius-pill: 999px;
+  --tilt-badge: rotate(-4deg);
+
+  /* ── Mouvement (transitions.dev) ── */
+  --duration-stagger: 40ms;
+  --duration-micro: 80ms;
+  --duration-quick: 150ms;
+  --duration-fast: 250ms;
+  --duration-medium: 350ms;
+  --duration-slow: 400ms;
+  --duration-very-slow: 500ms;
+
+  --ease-smooth-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: ease-in-out;
+  --ease-out: ease-out;
+  --ease-linear: linear;
+  --ease-bounce: cubic-bezier(0.34, 1.36, 0.64, 1);
+
+  /* Page side-by-side (08) — transitions d'étapes */
+  --page-slide-dur: 250ms;
+  --page-fade-dur: 250ms;
+  --page-slide-distance: 8px;
+  --page-blur: 3px;
+  --page-slide-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Texts reveal (18) — apparition des lignes et des cases clients */
+  --stagger-dur: 500ms;
+  --stagger-distance: 12px;
+  --stagger-stagger: 40ms;
+  --stagger-blur: 3px;
+  --stagger-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Checkbox check (25) — cases clients / attestation */
+  --check-box: 150ms;
+  --check-draw: 350ms;
+  --check-delay: 0ms;
+  --check-uncheck: 150ms;
+  --check-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Success check (10) — confirmation d'envoi */
+  --check-opacity-dur: 500ms;
+  --check-rotate-dur: 500ms;
+  --check-rotate-from: 80deg;
+  --check-bob-dur: 500ms;
+  --check-y-amount: 40px;
+  --check-blur-dur: 500ms;
+  --check-blur-from: 10px;
+  --check-path-dur: 500ms;
+  --check-path-delay: 80ms;
+  --check-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --check-ease-opacity: cubic-bezier(0.22, 1, 0.36, 1);
+  --check-ease-rotate: cubic-bezier(0.22, 1, 0.36, 1);
+  --check-ease-bob: cubic-bezier(0.34, 1.35, 0.64, 1);
+  --check-ease-path: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Error state shake (12) — champs invalides */
+  --shake-distance: 6px;
+  --shake-overshoot: 4px;
+  --shake-dur-a: 80ms;
+  --shake-dur-b: 60ms;
+  --shake-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --revert-dur: 280ms;
+
+  /* Card resize (01) — hauteur de la carte entre les étapes */
+  --resize-dur: 300ms;
+  --resize-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Shimmer text (15) — état de chargement, recoloré à la charte */
+  --shimmer-dur: 2000ms;
+  --shimmer-base: #c9b6ae;
+  --shimmer-highlight: var(--wt-script);
+  --shimmer-band: 400%;
+  --shimmer-ease: linear;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-body);
+  color: var(--wt-ink);
+  background: var(--wt-blush);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100dvh;
+}
+
+button,
+input,
+label {
+  font: inherit;
+  color: inherit;
+}
+
+/* ─────────────────────────── Mise en page ─────────────────────────── */
+
+.wt-shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.wt-header {
+  background: var(--wt-grad-post);
+  color: var(--wt-white);
+  padding: 28px 20px 56px;
+  position: relative;
+  overflow: hidden;
+}
+
+.wt-header::after {
+  /* Vague blanche organique en bas de la section dégradée (charte : Formes). */
+  content: "";
+  position: absolute;
+  left: -5%;
+  right: -5%;
+  bottom: -34px;
+  height: 56px;
+  background: var(--wt-blush);
+  border-radius: 50% 50% 0 0 / 100% 100% 0 0;
+}
+
+.wt-header-inner {
+  max-width: 520px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.wt-star {
+  position: absolute;
+  top: 26px;
+  right: -4px;
+  font-size: 38px;
+  transform: rotate(12deg);
+  filter: drop-shadow(2px 4px 3px rgba(0, 0, 0, 0.18));
+}
+
+.wt-badge {
+  display: inline-block;
+  background: var(--wt-white);
+  color: var(--wt-script);
+  font-family: var(--font-title);
+  font-size: 13px;
+  padding: 4px 13px;
+  transform: rotate(-3deg);
+  margin-bottom: 14px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.wt-header h1 {
+  font-family: var(--font-script);
+  font-weight: 400;
+  font-size: clamp(32px, 9vw, 44px);
+  line-height: 1.15;
+  margin: 0;
+}
+
+.wt-header p {
+  font-family: var(--font-title);
+  font-size: 16px;
+  margin: 6px 0 0;
+  opacity: 0.95;
+}
+
+.wt-main {
+  flex: 1;
+  max-width: 520px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 20px 48px;
+}
+
+.wt-card {
+  background: var(--wt-white);
+  border-radius: var(--radius-card);
+  box-shadow: 0 12px 40px rgba(228, 39, 97, 0.12);
+  padding: 26px 22px;
+  margin-top: -20px;
+  position: relative;
+}
+
+/* Card resize (01) : la carte suit la hauteur de l'étape affichée. */
+.wt-card-sizer {
+  transition: height var(--resize-dur) var(--resize-ease);
+  /* `hidden` clippe aussi les ombres des boutons sur les côtés ; `clip` avec
+     une marge laisse respirer la largeur tout en tenant la hauteur animée. */
+  overflow: hidden;
+  overflow: clip;
+  overflow-clip-margin: 16px;
+  will-change: height;
+}
+
+.wt-step-title {
+  font-family: var(--font-script);
+  color: var(--wt-script);
+  font-size: 30px;
+  line-height: 1.2;
+  margin: 0 0 4px;
+  font-weight: 400;
+}
+
+.wt-rule {
+  width: 110px;
+  height: 4px;
+  background: var(--wt-script);
+  border-radius: 2px;
+  margin-bottom: 18px;
+  position: relative;
+}
+
+.wt-rule::after {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: 14px;
+  width: 66px;
+  height: 3px;
+  background: var(--wt-script);
+  border-radius: 2px;
+}
+
+.wt-lead {
+  font-size: 16px;
+  margin: 0 0 20px;
+}
+
+.wt-punch {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-weight: 700;
+  color: var(--wt-script);
+  font-size: 16px;
+  margin-top: 22px;
+}
+
+/* ─────────────────────────── Progression ─────────────────────────── */
+
+.wt-steps {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 26px;
+  padding-right: 46px;
+}
+
+.wt-steps-track {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.45);
+  overflow: hidden;
+}
+
+.wt-steps-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--wt-white);
+}
+
+.wt-steps-label {
+  font-family: var(--font-title);
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+/* ───────────────────────────── Champs ───────────────────────────── */
+
+.wt-field {
+  display: block;
+  margin-bottom: 16px;
+  /* Sans ça, la largeur intrinsèque d'un <input type="date"> (icône du
+     sélecteur incluse) fait déborder la colonne de la grille. */
+  min-width: 0;
+}
+
+.wt-field-label {
+  display: block;
+  font-family: var(--font-title);
+  font-size: 14px;
+  color: #8a8a8a;
+  margin-bottom: 6px;
+}
+
+.wt-input {
+  width: 100%;
+  border: 2px solid #ece2dd;
+  border-radius: var(--radius-field);
+  background: var(--wt-white);
+  padding: 13px 15px;
+  font-size: 17px;
+  outline: none;
+  min-width: 0;
+  /* Error state shake (12) : seule la couleur de bordure est interpolée ici. */
+  transition: border-color var(--duration-quick) var(--ease-out);
+  will-change: transform;
+}
+
+.wt-input:focus {
+  border-color: var(--wt-script);
+}
+
+.wt-input.is-error {
+  border-color: var(--wt-red);
+  transition: border-color var(--revert-dur) var(--ease-out);
+}
+
+.wt-input.is-shaking {
+  animation: wt-shake
+    calc(var(--shake-dur-a) * 2 + var(--shake-dur-b) * 2) linear;
+}
+
+@keyframes wt-shake {
+  0% {
+    transform: translateX(0);
+    animation-timing-function: var(--shake-ease);
+  }
+  28.57% {
+    transform: translateX(var(--shake-distance));
+    animation-timing-function: var(--shake-ease);
+  }
+  57.14% {
+    transform: translateX(calc(var(--shake-distance) * -1));
+    animation-timing-function: var(--shake-ease);
+  }
+  78.57% {
+    transform: translateX(var(--shake-overshoot));
+    animation-timing-function: var(--shake-ease);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.wt-field-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 12px;
+}
+
+/* Les colonnes sont étroites en mobile : on resserre la typo des champs. */
+.wt-field-row .wt-input {
+  font-size: 16px;
+  padding: 13px 11px;
+}
+
+.wt-error {
+  color: var(--wt-red);
+  font-size: 14.5px;
+  margin: 10px 0 0;
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+/* ───────────────────────────── Boutons ───────────────────────────── */
+
+.wt-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  background: var(--wt-grad);
+  color: var(--wt-white);
+  font-family: var(--font-title);
+  font-size: 17px;
+  padding: 15px 28px;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+  box-shadow: 0 6px 16px rgba(228, 39, 97, 0.28);
+  transition:
+    box-shadow var(--duration-fast) var(--ease-smooth-out),
+    opacity var(--duration-fast) var(--ease-smooth-out);
+}
+
+.wt-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.wt-btn-ghost {
+  background: none;
+  border: 2px solid var(--wt-script);
+  color: var(--wt-script);
+  box-shadow: none;
+  padding: 12px 24px;
+  font-size: 16px;
+  width: auto;
+}
+
+.wt-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-top: 22px;
+}
+
+.wt-actions .wt-btn:not(.wt-btn-ghost) {
+  flex: 1;
+}
+
+/* ─────────────────── Cases (clients + attestation) ─────────────────── */
+
+.wt-choice {
+  display: flex;
+  gap: 13px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: var(--wt-white);
+  border: 2px solid #ece2dd;
+  border-radius: var(--radius-field);
+  padding: 14px 15px;
+  cursor: pointer;
+  transition:
+    border-color var(--check-box) var(--check-ease),
+    background var(--check-box) var(--check-ease);
+}
+
+.wt-choice + .wt-choice {
+  margin-top: 10px;
+}
+
+.wt-choice[aria-checked="true"] {
+  border-color: var(--wt-script);
+  background: var(--wt-blush);
+}
+
+.wt-choice-name {
+  font-family: var(--font-title);
+  font-size: 16.5px;
+}
+
+/* Checkbox check (25) : le carré se remplit, puis le trait se dessine. */
+.wt-check {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  border: 2px solid #d9c8c1;
+  background: var(--wt-white);
+  color: var(--wt-white);
+  transition:
+    background var(--check-box) var(--check-ease),
+    border-color var(--check-box) var(--check-ease);
+}
+
+[aria-checked="true"] > .wt-check,
+.wt-check[aria-checked="true"] {
+  background: var(--wt-grad);
+  border-color: transparent;
+}
+
+.wt-check svg {
+  display: block;
+  overflow: visible;
+}
+
+.wt-check svg path {
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  stroke-dasharray: var(--check-len, 15);
+  stroke-dashoffset: var(--check-len, 15);
+  transition: stroke-dashoffset var(--check-uncheck) var(--check-ease);
+}
+
+[aria-checked="true"] > .wt-check svg path,
+.wt-check[aria-checked="true"] svg path {
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset var(--check-draw) var(--check-ease)
+    var(--check-delay);
+}
+
+.wt-attestation {
+  display: flex;
+  gap: 13px;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  background: var(--wt-blush);
+  border: 2px solid #f0dfd8;
+  border-radius: var(--radius-field);
+  padding: 16px;
+  cursor: pointer;
+  transition: border-color var(--check-box) var(--check-ease);
+}
+
+.wt-attestation[aria-checked="true"] {
+  border-color: var(--wt-script);
+}
+
+.wt-attestation-text {
+  font-weight: 600;
+  font-size: 15.5px;
+}
+
+/* ───────────────────────── Récapitulatif ───────────────────────── */
+
+.wt-recap {
+  border: 1px solid #f0e4df;
+  border-radius: var(--radius-field);
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  background: var(--wt-blush);
+}
+
+.wt-recap-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 15px;
+  padding: 4px 0;
+}
+
+.wt-recap-row span:first-child {
+  color: #8a8a8a;
+  font-family: var(--font-title);
+}
+
+.wt-recap-row span:last-child {
+  font-weight: 600;
+  text-align: right;
+}
+
+/* ─────────────────── Confirmation / point situation ─────────────────── */
+
+.wt-confirm-head {
+  text-align: center;
+  margin-bottom: 6px;
+}
+
+/* Success check (10) */
+.wt-success-check {
+  display: inline-block;
+  transform-origin: center;
+  opacity: 0;
+  color: var(--wt-white);
+  will-change: transform, opacity, filter;
+}
+
+.wt-success-check svg {
+  display: block;
+  overflow: visible;
+}
+
+.wt-success-badge {
+  display: grid;
+  place-items: center;
+  width: 74px;
+  height: 74px;
+  border-radius: 50%;
+  background: var(--wt-grad);
+  margin: 0 auto 16px;
+  box-shadow: 0 10px 26px rgba(228, 39, 97, 0.3);
+}
+
+.wt-success-check svg path {
+  stroke: currentColor;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  fill: none;
+  stroke-dasharray: 34;
+  stroke-dashoffset: 34;
+}
+
+.wt-success-check[data-state="in"] {
+  animation:
+    wt-check-fade var(--check-opacity-dur) var(--check-ease-opacity) forwards,
+    wt-check-rotate var(--check-rotate-dur) var(--check-ease-rotate) forwards,
+    wt-check-blur var(--check-blur-dur) var(--check-ease-out) forwards,
+    wt-check-bob var(--check-bob-dur) var(--check-ease-bob) forwards;
+}
+
+.wt-success-check[data-state="in"] svg path {
+  animation: wt-check-draw var(--check-path-dur) var(--check-ease-path)
+    var(--check-path-delay) forwards;
+}
+
+@keyframes wt-check-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes wt-check-rotate {
+  from { transform: rotate(var(--check-rotate-from)); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes wt-check-blur {
+  from { filter: blur(var(--check-blur-from)); }
+  to { filter: blur(0); }
+}
+
+@keyframes wt-check-bob {
+  from { translate: 0 var(--check-y-amount); }
+  to { translate: 0 0; }
+}
+
+@keyframes wt-check-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+.wt-forfait {
+  margin-top: 24px;
+}
+
+.wt-forfait-track {
+  height: 14px;
+  border-radius: var(--radius-pill);
+  background: #f2e6e1;
+  overflow: hidden;
+}
+
+.wt-forfait-fill {
+  height: 100%;
+  border-radius: var(--radius-pill);
+  background: var(--wt-grad);
+}
+
+.wt-forfait-fill.is-over {
+  background: var(--wt-grad-alert);
+}
+
+.wt-forfait-legend {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-title);
+  font-size: 13.5px;
+  color: #8a8a8a;
+  margin-top: 8px;
+}
+
+.wt-alert {
+  margin-top: 16px;
+  border-left: 4px solid var(--wt-red);
+  background: #fdf0ee;
+  border-radius: 0 12px 12px 0;
+  padding: 12px 14px;
+  font-size: 15px;
+}
+
+.wt-neutral {
+  margin-top: 16px;
+  background: var(--wt-blush);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 15px;
+  color: #7a6f6b;
+}
+
+.wt-figure {
+  font-family: var(--font-title);
+  font-size: 22px;
+  color: var(--wt-script);
+}
+
+/* Digit roll (number-ticker, starc007/ui-components) */
+.wt-digits {
+  display: inline-flex;
+  align-items: center;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  vertical-align: baseline;
+}
+
+.wt-digits-row {
+  display: inline-flex;
+  align-items: center;
+}
+
+.wt-digit-static {
+  display: inline-flex;
+  align-items: center;
+  height: 1.1em;
+}
+
+.wt-digit {
+  position: relative;
+  display: inline-block;
+  overflow: hidden;
+  height: 1.1em;
+  width: 1ch;
+}
+
+.wt-digit-column {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  will-change: transform;
+}
+
+.wt-digit-column > span {
+  display: flex;
+  height: 1.1em;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* ────────────────────── Chargement (shimmer 15) ────────────────────── */
+
+.wt-shimmer {
+  font-family: var(--font-title);
+  background: linear-gradient(
+      90deg,
+      var(--shimmer-base) 0%,
+      var(--shimmer-highlight) 50%,
+      var(--shimmer-base) 100%
+    )
+    no-repeat;
+  background-size: var(--shimmer-band) 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: wt-shimmer var(--shimmer-dur) var(--shimmer-ease) infinite;
+}
+
+@keyframes wt-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+.wt-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Le garde prefers-reduced-motion des snippets transitions.dev est obligatoire. */
+@media (prefers-reduced-motion: reduce) {
+  .wt-card-sizer,
+  .wt-input,
+  .wt-choice,
+  .wt-check,
+  .wt-check svg path,
+  .wt-btn {
+    transition: none !important;
+  }
+
+  .wt-input,
+  .wt-success-check,
+  .wt-shimmer {
+    animation: none !important;
+    transform: none !important;
+  }
+
+  .wt-success-check {
+    opacity: 1;
+  }
+
+  .wt-success-check svg path {
+    animation: none !important;
+    stroke-dashoffset: 0 !important;
+  }
+}
