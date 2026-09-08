@@ -6,7 +6,6 @@ import { formatMinutes } from "@/lib/time";
 import { ForfaitBar } from "../ForfaitBar";
 import { PressableButton } from "../PressableButton";
 import { Reveal } from "../Reveal";
-import { RollingNumber } from "../RollingNumber";
 import { SuccessCheck } from "../SuccessCheck";
 
 export function StepConfirmation({
@@ -38,22 +37,13 @@ export function StepConfirmation({
         </p>
       </Reveal>
 
-      {forfaitMinutes === null ? (
-        <Reveal index={2}>
-          <p className="wt-neutral">
-            Aucun forfait n'est renseigné au contrat de ce client : on ne peut
-            pas afficher ton cumul du mois, mais ta déclaration est bien
-            enregistrée.
-          </p>
-        </Reveal>
-      ) : (
+      {/* Sans forfait exploitable, le point sur la situation ne s'affiche pas
+          du tout : la confirmation d'envoi suffit. */}
+      {forfaitMinutes === null ? null : (
         <>
           <Reveal index={2}>
             <p className="wt-lead">
-              Tu as passé{" "}
-              <span className="wt-figure">
-                <RollingNumber text={formatMinutes(result.consumedMinutes)} />
-              </span>{" "}
+              Tu as passé <strong>{formatMinutes(result.consumedMinutes)}</strong>{" "}
               sur les <strong>{result.forfaitHours}h</strong> prévues par mois
               chez <strong>{result.clientName}</strong>
               {over ? "." : ", attention à ne pas les excéder."}
@@ -77,13 +67,6 @@ export function StepConfirmation({
           ) : null}
         </>
       )}
-
-      <Reveal index={5}>
-        <div className="wt-punch">
-          <span>🚀</span>
-          <span>Déclaré, c'est réglé.</span>
-        </div>
-      </Reveal>
 
       <Reveal index={6}>
         <div className="wt-actions">

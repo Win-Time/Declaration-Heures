@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import type { ClientOption, DeclarationResult } from "@/lib/notion-types";
-import { todayIso } from "@/lib/time";
 
+import { splitDigits } from "./DurationInput";
 import { ProgressSteps } from "./ProgressSteps";
 import { StepShell } from "./StepShell";
+import { WinTimeLogo } from "./WinTimeLogo";
 import { StepAttestation } from "./steps/StepAttestation";
 import { StepClient } from "./steps/StepClient";
 import { StepConfirmation } from "./steps/StepConfirmation";
@@ -47,9 +48,10 @@ export function DeclarationWizard() {
   const [clientsError, setClientsError] = useState<string | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
 
-  const [draft, setDraft] = useState<DeclarationDraft>(() => {
-    const today = todayIso();
-    return { start: today, end: today, hours: "", minutes: "" };
+  const [draft, setDraft] = useState<DeclarationDraft>({
+    start: null,
+    end: null,
+    duration: "",
   });
 
   const [attested, setAttested] = useState(false);
@@ -58,6 +60,7 @@ export function DeclarationWizard() {
   const [result, setResult] = useState<DeclarationResult | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
+  const clientsLoadedRef = useRef(false);
 
   const goTo = useCallback((next: Step) => {
     setDirection(ORDER.indexOf(next) >= ORDER.indexOf(step) ? 1 : -1);
@@ -69,7 +72,10 @@ export function DeclarationWizard() {
     cardRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
   }, [step]);
 
-  const loadClients = useCallback(async () => {
+  const loadClients = useCallback(async (force = false) => {
+    // Les clients sont mis en cache pour la session : revenir à l'étape 2 ou
+    // enchaîner une deuxième déclaration ne relance ni l'appel ni le shimmer.
+    if (!force && clientsLoadedRef.current) return;
     setClientsLoading(true);
     setClientsError(null);
     try {
@@ -86,6 +92,7 @@ export function DeclarationWizard() {
         return;
       }
       setClients(data.clients ?? []);
+      clientsLoadedRef.current = true;
     } catch {
       setClientsError("Connexion perdue. Réessaie dans un instant.");
     } finally {
@@ -96,6 +103,8 @@ export function DeclarationWizard() {
   const identify = useCallback(async () => {
     setIdentifying(true);
     setPhoneError(null);
+    // Une nouvelle identification invalide le cache de l'assistante précédente.
+    clientsLoadedRef.current = false;
     try {
       const response = await fetch("/api/identify", {
         method: "POST",
@@ -110,7 +119,7 @@ export function DeclarationWizard() {
         return;
       }
       goTo("client");
-      void loadClients();
+      void loadClients(true);
     } catch {
       setPhoneError("Connexion perdue. Réessaie dans un instant.");
     } finally {
@@ -119,7 +128,8 @@ export function DeclarationWizard() {
   }, [goTo, loadClients, phone]);
 
   const submitDeclaration = useCallback(async () => {
-    if (!selectedClientId) return;
+    if (!selectedClientId || !draft.start || !draft.end) return;
+    const { hours, minutes } = splitDigits(draft.duration);
     setSending(true);
     setSendError(null);
     try {
@@ -130,8 +140,8 @@ export function DeclarationWizard() {
           clientId: selectedClientId,
           start: draft.start,
           end: draft.end,
-          hours: Number(draft.hours || 0),
-          minutes: Number(draft.minutes || 0),
+          hours,
+          minutes,
           attestation: attested,
         }),
       });
@@ -163,15 +173,13 @@ export function DeclarationWizard() {
   }, [attested, draft, goTo, selectedClientId]);
 
   const restart = useCallback(() => {
-    const today = todayIso();
     setSelectedClientId(null);
-    setDraft({ start: today, end: today, hours: "", minutes: "" });
+    setDraft({ start: null, end: null, duration: "" });
     setAttested(false);
     setResult(null);
     setSendError(null);
     goTo("client");
-    void loadClients();
-  }, [goTo, loadClients]);
+  }, [goTo]);
 
   const selectedClient = clients.find(
     (client) => client.id === selectedClientId,
@@ -187,7 +195,7 @@ export function DeclarationWizard() {
             ⭐
           </span>
           <ProgressSteps current={stepIndex + 1} total={ORDER.length} />
-          <span className="wt-badge">win time</span>
+          <WinTimeLogo />
           <h1>{heading.title}</h1>
           <p>{heading.subtitle}</p>
         </div>

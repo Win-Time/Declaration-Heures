@@ -26,3 +26,40 @@ export function phoneKey(input: string): string {
 export function isPlausiblePhone(input: string): boolean {
   return digitsOnly(input).length >= 9;
 }
+
+/**
+ * Mise en forme d'affichage : les chiffres sont groupés par deux.
+ * "064626262610" -> "06 46 26 26 10". Un préfixe international est conservé
+ * tel quel devant les groupes ("+33 6 12 34 56 78" reste lisible).
+ */
+export function formatPhone(input: string): string {
+  const international = input.trimStart().startsWith("+");
+  const digits = digitsOnly(input).slice(0, 15);
+  if (digits === "") return international ? "+" : "";
+
+  if (international && digits.startsWith("33")) {
+    const rest = digits.slice(2);
+    const head = rest.slice(0, 1);
+    const tail = rest.slice(1).match(/\d{1,2}/g) ?? [];
+    return `+33${head ? ` ${head}` : ""}${tail.length ? ` ${tail.join(" ")}` : ""}`;
+  }
+
+  const groups = digits.match(/\d{1,2}/g) ?? [];
+  return `${international ? "+" : ""}${groups.join(" ")}`;
+}
+
+/**
+ * Position du curseur après reformatage : on la recale sur le même nombre de
+ * chiffres saisis, sinon chaque espace inséré renvoie le curseur à la fin.
+ */
+export function caretAfterFormat(formatted: string, digitsBeforeCaret: number): number {
+  if (digitsBeforeCaret <= 0) return 0;
+  let seen = 0;
+  for (let index = 0; index < formatted.length; index += 1) {
+    if (/\d/.test(formatted[index])) {
+      seen += 1;
+      if (seen === digitsBeforeCaret) return index + 1;
+    }
+  }
+  return formatted.length;
+}

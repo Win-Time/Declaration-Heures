@@ -1,5 +1,9 @@
 "use client";
 
+import { useRef } from "react";
+
+import { caretAfterFormat, digitsOnly, formatPhone } from "@/lib/phone";
+
 import { PressableButton } from "../PressableButton";
 import { Reveal } from "../Reveal";
 import { useShake } from "../useShake";
@@ -18,6 +22,26 @@ export function StepPhone({
   error: string | null;
 }) {
   const { shaking, onAnimationEnd } = useShake(error);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  /**
+   * Le champ est reformaté à chaque frappe (groupes de deux chiffres) et le
+   * curseur est replacé sur le même chiffre, sinon les espaces ajoutés le
+   * renverraient en fin de ligne.
+   */
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const { value, selectionStart } = event.target;
+    const caret = selectionStart ?? value.length;
+    const digitsBeforeCaret = digitsOnly(value.slice(0, caret)).length;
+    const formatted = formatPhone(value);
+
+    onPhoneChange(formatted);
+
+    const nextCaret = caretAfterFormat(formatted, digitsBeforeCaret);
+    requestAnimationFrame(() => {
+      inputRef.current?.setSelectionRange(nextCaret, nextCaret);
+    });
+  };
 
   return (
     <form
@@ -33,8 +57,7 @@ export function StepPhone({
 
       <Reveal index={1}>
         <p className="wt-lead">
-          Entre le numéro de téléphone que tu nous as communiqué. C'est lui qui
-          nous permet de retrouver tes clients.
+          Saisi ton numéro de téléphone pour qu'on puisse t'identifier
         </p>
       </Reveal>
 
@@ -42,6 +65,7 @@ export function StepPhone({
         <label className="wt-field">
           <span className="wt-field-label">Ton numéro de téléphone</span>
           <input
+            ref={inputRef}
             className={`wt-input${error ? " is-error" : ""}${shaking ? " is-shaking" : ""}`}
             onAnimationEnd={onAnimationEnd}
             type="tel"
@@ -50,7 +74,7 @@ export function StepPhone({
             name="phone"
             placeholder="06 12 34 56 78"
             value={phone}
-            onChange={(event) => onPhoneChange(event.target.value)}
+            onChange={handleChange}
             aria-invalid={error ? true : undefined}
             aria-describedby={error ? "phone-error" : undefined}
           />

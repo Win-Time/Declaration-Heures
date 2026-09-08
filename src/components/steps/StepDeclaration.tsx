@@ -2,15 +2,19 @@
 
 import { useState } from "react";
 
+import type { IsoDate } from "@/lib/calendar";
+
+import { DateRangePicker } from "../DateRangePicker";
+import { DurationInput, splitDigits } from "../DurationInput";
 import { PressableButton } from "../PressableButton";
 import { Reveal } from "../Reveal";
 import { useShake } from "../useShake";
 
 export type DeclarationDraft = {
-  start: string;
-  end: string;
-  hours: string;
-  minutes: string;
+  start: IsoDate | null;
+  end: IsoDate | null;
+  /** Suite de chiffres du champ de temps ("215" = 02h15). */
+  duration: string;
 };
 
 export function StepDeclaration({
@@ -37,17 +41,13 @@ export function StepDeclaration({
 
   const validate = () => {
     if (!draft.start || !draft.end) {
-      return "Renseigne le début et la fin de ta période.";
+      return "Choisis ta période : une date de début et une date de fin.";
     }
     if (draft.end < draft.start) {
       return "La date de fin doit être après la date de début.";
     }
-    const hours = Number(draft.hours || 0);
-    const minutes = Number(draft.minutes || 0);
-    if (!Number.isInteger(hours) || hours < 0) {
-      return "Les heures doivent être un nombre entier positif.";
-    }
-    if (!Number.isInteger(minutes) || minutes < 0 || minutes > 59) {
+    const { hours, minutes } = splitDigits(draft.duration);
+    if (minutes > 59) {
       return "Les minutes doivent être comprises entre 0 et 59.";
     }
     if (hours * 60 + minutes <= 0) {
@@ -65,8 +65,6 @@ export function StepDeclaration({
     }
     onNext();
   };
-
-  const fieldClass = `wt-input${error ? " is-error" : ""}${shaking ? " is-shaking" : ""}`;
 
   return (
     <form
@@ -87,64 +85,25 @@ export function StepDeclaration({
       </Reveal>
 
       <Reveal index={2}>
-        <div className="wt-field-row">
-          <label className="wt-field">
-            <span className="wt-field-label">Début</span>
-            <input
-              className={fieldClass}
-              onAnimationEnd={onAnimationEnd}
-              type="date"
-              value={draft.start}
-              max={draft.end || undefined}
-              onChange={(event) => patch({ start: event.target.value })}
-            />
-          </label>
-          <label className="wt-field">
-            <span className="wt-field-label">Fin</span>
-            <input
-              className={fieldClass}
-              onAnimationEnd={onAnimationEnd}
-              type="date"
-              value={draft.end}
-              min={draft.start || undefined}
-              onChange={(event) => patch({ end: event.target.value })}
-            />
-          </label>
-        </div>
+        <DateRangePicker
+          start={draft.start}
+          end={draft.end}
+          onChange={(range) => patch(range)}
+          invalid={error !== null && (!draft.start || !draft.end)}
+        />
       </Reveal>
 
       <Reveal index={3}>
-        <div className="wt-field-row">
-          <label className="wt-field">
-            <span className="wt-field-label">Heures</span>
-            <input
-              className={fieldClass}
-              onAnimationEnd={onAnimationEnd}
-              type="number"
-              inputMode="numeric"
-              min={0}
-              step={1}
-              placeholder="0"
-              value={draft.hours}
-              onChange={(event) => patch({ hours: event.target.value })}
-            />
-          </label>
-          <label className="wt-field">
-            <span className="wt-field-label">Minutes</span>
-            <input
-              className={fieldClass}
-              onAnimationEnd={onAnimationEnd}
-              type="number"
-              inputMode="numeric"
-              min={0}
-              max={59}
-              step={1}
-              placeholder="0"
-              value={draft.minutes}
-              onChange={(event) => patch({ minutes: event.target.value })}
-            />
-          </label>
-        </div>
+        <label className="wt-field">
+          <span className="wt-field-label">Temps passé</span>
+          <DurationInput
+            digits={draft.duration}
+            onDigitsChange={(duration) => patch({ duration })}
+            invalid={error !== null}
+            shaking={shaking}
+            onAnimationEnd={onAnimationEnd}
+          />
+        </label>
       </Reveal>
 
       {error ? (

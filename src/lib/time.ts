@@ -49,15 +49,3 @@ export function currentMonthRange(timeZone: string = PARIS_TZ): {
     end: `${year}-${mm}-${String(lastDay).padStart(2, "0")}`,
   };
 }
-
-/** "2026-09-08" -> "8 septembre 2026" (ou "8 sept. 2026" en version courte). */
-export function formatDateFr(iso: string, style: "long" | "short" = "long"): string {
-  const [year, month, day] = iso.split("-").map(Number);
-  if (!year || !month || !day) return iso;
-  return new Intl.DateTimeFormat("fr-FR", {
-    day: "numeric",
-    month: style,
-    year: "numeric",
-    timeZone: "UTC",
-  }).format(new Date(Date.UTC(year, month - 1, day)));
-}

@@ -66,8 +66,12 @@ endroit à modifier si une propriété est renommée dans Notion.
    si le numéro existe.
 2. **Sélection du client** — les clients de l'assistante uniquement, résolus
    depuis la relation `Clients` de sa page. Visuel case à cocher, comportement
-   radio : un seul client par déclaration.
-3. **Saisie** — période (fin ≥ début) et temps en heures + minutes (0–59).
+   radio : un seul client par déclaration. La liste est mise en cache pour la
+   session : revenir à cette étape ou enchaîner une deuxième déclaration ne
+   relance pas l'appel.
+3. **Saisie** — un seul champ de période, ouvrant un calendrier maison (premier
+   clic = début, survol = aperçu de la plage, deuxième clic = fin), et un seul
+   champ de temps affiché `HHhMM` qui se remplit par la droite (`215` → 02h15).
 4. **Attestation** — case obligatoire avant activation de l'envoi.
 5. **Point sur la situation** — cumul du mois calendaire en cours (fuseau
    Europe/Paris, sur la date de début de la période) face au `Forfait (h)` du
@@ -102,7 +106,22 @@ endroit à modifier si une propriété est renommée dans Notion.
 ## Design et animations
 
 Les tokens `--wt-*` de `src/app/globals.css` reprennent la charte visuelle Win
-Time (couleurs, dégradés, Yellowtail / Questrial / Open Sans, rayons).
+Time (couleurs, dégradés, Yellowtail / Questrial / Open Sans, rayons). Le logo
+est posé sur une pastille blanche : son dégradé framboise → orange est celui du
+bandeau, il y disparaîtrait sans fond. `win_time_80_logo.svg` (racine) est la
+source ; `public/win-time-logo.svg` en est la copie servie au navigateur, sans
+les métadonnées C2PA (10 Ko → 2,6 Ko).
+
+Deux composants sont écrits sur mesure faute d'équivalent dans les repos de
+référence :
+
+- `DateRangePicker` — calendrier français (lundi en tête), plage en deux clics
+  avec aperçu au survol, déplié dans le flux plutôt qu'en surcouche (la carte
+  anime déjà sa hauteur, un panneau flottant y serait rogné). Aucune UI native
+  d'OS, dont le rendu varie d'un téléphone à l'autre et qui ne sait pas
+  afficher une plage.
+- `DurationInput` — champ unique `HHhMM` qui se remplit par la droite, avec
+  `00h00` en repère quand il est vide.
 
 Les animations proviennent des deux références imposées, recolorées à la
 charte :

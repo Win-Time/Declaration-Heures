@@ -3,9 +3,11 @@
 import { motion, useReducedMotion } from "motion/react";
 
 import { SPRING_PRESS } from "@/lib/motion-tokens";
-import { formatDateFr, formatMinutes, toTotalMinutes } from "@/lib/time";
+import { formatRange } from "@/lib/calendar";
+import { formatMinutes, toTotalMinutes } from "@/lib/time";
 
 import { CheckMark } from "../CheckMark";
+import { splitDigits } from "../DurationInput";
 import { PressableButton } from "../PressableButton";
 import { Reveal } from "../Reveal";
 import type { DeclarationDraft } from "./StepDeclaration";
@@ -30,10 +32,8 @@ export function StepAttestation({
   error: string | null;
 }) {
   const reduce = useReducedMotion();
-  const totalMinutes = toTotalMinutes(
-    Number(draft.hours || 0),
-    Number(draft.minutes || 0),
-  );
+  const { hours, minutes } = splitDigits(draft.duration);
+  const totalMinutes = toTotalMinutes(hours, minutes);
 
   return (
     <div>
@@ -50,9 +50,7 @@ export function StepAttestation({
           </div>
           <div className="wt-recap-row">
             <span>Période</span>
-            <span>
-              {formatDateFr(draft.start, "short")} → {formatDateFr(draft.end, "short")}
-            </span>
+            <span>{formatRange(draft.start, draft.end)}</span>
           </div>
           <div className="wt-recap-row">
             <span>Temps déclaré</span>
@@ -72,8 +70,12 @@ export function StepAttestation({
           transition={SPRING_PRESS}
         >
           <CheckMark />
-          <span className="wt-attestation-text">
-            Je certifie que les informations déclarées sont exactes.
+          {/* La phrase tient sur une ligne : sa taille suit la largeur du bloc
+              (unités de conteneur), elle ne se coupe jamais en deux. */}
+          <span className="wt-attestation-fit">
+            <span className="wt-attestation-text">
+              Je certifie que les informations déclarées sont exactes.
+            </span>
           </span>
         </motion.button>
       </Reveal>
