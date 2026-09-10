@@ -45,14 +45,24 @@ TypeScript seul.
 
 | Base | Propriété | Type | Rôle |
 |---|---|---|---|
-| Assistantes | `Téléphone` | Rich text (ou téléphone) | identifiant de connexion |
-| Assistantes | `Contrats Clients` | Relation → Contrats | contrats de l'assistante |
-| Contrats | `Client` | Relation → Clients | client couvert par le contrat |
-| Déclarations | `Période de déclaration` | Date (début + fin) | période déclarée |
-| Déclarations | `Assistante` | Relation → Assistantes | autrice de la déclaration |
-| Déclarations | `Contrat` | Relation → Contrats | contrat concerné |
-| Déclarations | `Client` | Relation → Clients | client concerné |
-| Déclarations | `Minutes déclarées` | Number | temps en minutes entières |
+| Assistantes | `Téléphone` | Phone number | identifiant de connexion |
+| Assistantes | `Contrats Clients` | Relation → Contrats Clients | contrats de l'assistante |
+| Contrats Clients | `Client` | Relation → Clients | client couvert par le contrat |
+| Heures déclarées | `Nom du client` | Title | nom du client |
+| Heures déclarées | `Période de déclaration` | Date (début + fin) | période déclarée |
+| Heures déclarées | `Assistante` | Relation → Assistantes | autrice de la déclaration |
+| Heures déclarées | `Contrat` | Relation → Contrats Clients | contrat concerné |
+| Heures déclarées | `Heures à déclarer ` | Number | heures pleines (espace finale dans le nom) |
+| Heures déclarées | `Minutes déclarées` | Number | **total** de minutes |
+
+`Client` existe aussi dans « Heures déclarées », mais c'est un **rollup** calculé
+à partir de `Contrat` : en lecture seule, il n'est pas écrit et se remplit tout
+seul. `Date de déclaration` (created_time) et `Information` (formule) sont
+également automatiques.
+
+Le temps est réparti comme dans les déclarations déjà saisies : `Minutes
+déclarées` porte le total (8 h 30 → 510) et `Heures à déclarer ` les heures
+pleines (→ 8).
 
 Ces noms sont ceux configurés par défaut dans `src/lib/notion-properties.ts`.
 Ils ne servent que de repli : chaque propriété se désigne d'abord par son

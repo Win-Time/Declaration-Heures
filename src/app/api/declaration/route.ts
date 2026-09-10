@@ -73,11 +73,12 @@ export async function POST(request: Request) {
     const selected = clients.find((client) => client.id === clientId);
     if (!selected) return fail("Ce client n'est pas dans ta liste.", 403);
 
+    // Le client n'est pas écrit : dans la base Heures déclarées, c'est un
+    // rollup calculé à partir du contrat. Il reste vérifié côté serveur.
     const declarationId = await createDeclaration({
       assistanteId,
-      clientId: selected.id,
-      clientName: selected.name,
       contratId: selected.contratId,
+      clientName: selected.name,
       start,
       end,
       totalMinutes,

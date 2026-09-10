@@ -353,11 +353,12 @@ export async function listClientsForAssistante(
 
 export async function createDeclaration(input: {
   assistanteId: string;
-  clientId: string;
-  clientName: string;
   contratId: string;
   start: string;
   end: string;
+  /** Nom du client, qui sert de titre à la déclaration. */
+  clientName: string;
+  /** Temps déclaré, en minutes. */
   totalMinutes: number;
 }): Promise<string> {
   const databaseId = env("NOTION_DB_DECLARATIONS");
@@ -399,7 +400,11 @@ export async function createDeclaration(input: {
     relation: [{ id: input.assistanteId }],
   });
   put(DECLARATION_PROPS.contrat, { relation: [{ id: input.contratId }] });
-  put(DECLARATION_PROPS.client, { relation: [{ id: input.clientId }] });
+  // Convention des déclarations existantes : le total de minutes d'un côté,
+  // les heures pleines de l'autre (8 h 30 → 8 et 510).
+  put(DECLARATION_PROPS.heures, {
+    number: Math.floor(input.totalMinutes / 60),
+  });
   put(DECLARATION_PROPS.minutes, { number: input.totalMinutes });
 
   if (missing.length > 0 || mistyped.length > 0) {
@@ -417,12 +422,9 @@ export async function createDeclaration(input: {
   }
 
   if (schema.titleId) {
+    // Le titre de la base « Heures déclarées » porte le nom du client.
     properties[schema.titleId] = {
-      title: [
-        {
-          text: { content: `${input.clientName} — ${input.start} → ${input.end}` },
-        },
-      ],
+      title: [{ text: { content: input.clientName } }],
     };
   }
 

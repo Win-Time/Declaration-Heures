@@ -71,7 +71,7 @@ const declarationsRows = printProperties("Déclarations", declarationsSchema.pro
 suggest("NOTION_PROP_PERIODE", pick(declarationsRows, "Période de déclaration"));
 suggest("NOTION_PROP_ASSISTANTE", pick(declarationsRows, "Assistante"));
 suggest("NOTION_PROP_CONTRAT", pick(declarationsRows, "Contrat"));
-suggest("NOTION_PROP_CLIENT", pick(declarationsRows, "Client"));
+suggest("NOTION_PROP_HEURES", pick(declarationsRows, "Heures à déclarer"));
 suggest("NOTION_PROP_MINUTES", pick(declarationsRows, "Minutes déclarées"));
 
 // ── Une page Contrat, atteinte comme le fait l'application ──
