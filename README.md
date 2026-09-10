@@ -122,7 +122,13 @@ directive est reçue.
 - Assistante sans client : message clair, pas d'erreur bloquante.
 - Noms de propriétés : la lecture tolère une casse différente, une espace
   parasite ou un accent manquant, et accepte un rollup là où une relation est
-  attendue.
+  attendue. À l'écriture, Notion exige le nom exact : les propriétés sont donc
+  résolues contre le schéma de la base Déclarations, avec la même tolérance,
+  puis écrites sous leur nom réel.
+- Schéma de la base Déclarations incompatible (propriété absente ou d'un autre
+  type) : l'envoi échoue avec un message qui dit que c'est un réglage à
+  corriger, et non de réessayer ; le log nomme la propriété fautive et liste
+  celles qui existent, avec leur type.
 - Contrat sans client exploitable : ignoré, avec un avertissement qui liste les
   propriétés réellement présentes sur la page et leur type.
 - Même client sous deux contrats : le premier contrat est retenu (deux lignes

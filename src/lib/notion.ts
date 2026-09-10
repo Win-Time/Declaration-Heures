@@ -342,22 +342,62 @@ export async function createDeclaration(input: {
 }): Promise<string> {
   const databaseId = env("NOTION_DB_DECLARATIONS");
   const sourceId = await dataSourceId(databaseId);
+  const schema = await declarationSchema(sourceId);
 
-  const properties: Record<string, unknown> = {
-    [DECLARATION_PERIODE_PROPERTY]: {
-      date: { start: input.start, end: input.end },
-    },
-    [DECLARATION_ASSISTANTE_PROPERTY]: {
-      relation: [{ id: input.assistanteId }],
-    },
-    [DECLARATION_CONTRAT_PROPERTY]: { relation: [{ id: input.contratId }] },
-    [DECLARATION_CLIENT_PROPERTY]: { relation: [{ id: input.clientId }] },
-    [DECLARATION_MINUTES_PROPERTY]: { number: input.totalMinutes },
+  const properties: Record<string, unknown> = {};
+  const missing: string[] = [];
+  const mistyped: string[] = [];
+
+  /**
+   * Écrit une propriété sous son nom réel dans Notion.
+   *
+   * À l'écriture, contrairement à la lecture, Notion exige le nom exact : on
+   * résout donc chaque propriété contre le schéma de la base, en tolérant les
+   * écarts de casse, d'accent et d'espaces.
+   */
+  const put = (name: string, expectedType: string, value: unknown) => {
+    const found = schema.resolve(name);
+    if (!found) {
+      missing.push(name);
+      return;
+    }
+    if (found.type !== expectedType) {
+      mistyped.push(`« ${found.name} » est de type ${found.type}, attendu ${expectedType}`);
+      return;
+    }
+    properties[found.name] = value;
   };
 
-  const titleProperty = await declarationTitleProperty(sourceId);
-  if (titleProperty) {
-    properties[titleProperty] = {
+  put(DECLARATION_PERIODE_PROPERTY, "date", {
+    date: { start: input.start, end: input.end },
+  });
+  put(DECLARATION_ASSISTANTE_PROPERTY, "relation", {
+    relation: [{ id: input.assistanteId }],
+  });
+  put(DECLARATION_CONTRAT_PROPERTY, "relation", {
+    relation: [{ id: input.contratId }],
+  });
+  put(DECLARATION_CLIENT_PROPERTY, "relation", {
+    relation: [{ id: input.clientId }],
+  });
+  put(DECLARATION_MINUTES_PROPERTY, "number", { number: input.totalMinutes });
+
+  if (missing.length > 0 || mistyped.length > 0) {
+    throw new NotionSchemaError(
+      [
+        missing.length > 0
+          ? `Propriétés introuvables dans la base Déclarations : ${missing.map((name) => `« ${name} »`).join(", ")}.`
+          : null,
+        mistyped.length > 0 ? mistyped.join(" ; ") + "." : null,
+        `Propriétés de la base : ${schema.describe()}`,
+      ]
+        .filter(Boolean)
+        .join(" "),
+    );
+  }
+
+  if (schema.titleName) {
+    properties[schema.titleName] = {
       title: [
         {
           text: { content: `${input.clientName} — ${input.start} → ${input.end}` },
@@ -378,20 +418,58 @@ export async function createDeclaration(input: {
   return page.id;
 }
 
-/** Nom de la propriété `title` de la base Déclarations (best effort). */
-async function declarationTitleProperty(
-  sourceId: string,
-): Promise<string | null> {
-  try {
-    const source = await throttle(() =>
-      client().dataSources.retrieve({ data_source_id: sourceId }),
-    );
-    if (!("properties" in source)) return null;
-    for (const [name, property] of Object.entries(source.properties)) {
-      if (property.type === "title") return name;
-    }
-  } catch {
-    // Sans titre la page reste valide : on n'échoue pas la déclaration pour ça.
+/**
+ * Erreur de configuration Notion : la base ne correspond pas à ce que le
+ * formulaire écrit. Réessayer n'y changera rien, il faut corriger le schéma.
+ */
+export class NotionSchemaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "NotionSchemaError";
   }
-  return null;
+}
+
+type DeclarationSchema = {
+  /** Nom de la propriété `title`, quel qu'il soit. */
+  titleName: string | null;
+  /** Nom et type réels d'une propriété, à partir d'un nom approchant. */
+  resolve: (name: string) => { name: string; type: string } | null;
+  /** « Nom (title), Minutes (number) » — pour les messages d'erreur. */
+  describe: () => string;
+};
+
+const schemaCache = new Map<string, DeclarationSchema>();
+
+/** Schéma de la base Déclarations, lu une fois puis mis en cache. */
+async function declarationSchema(sourceId: string): Promise<DeclarationSchema> {
+  const cached = schemaCache.get(sourceId);
+  if (cached) return cached;
+
+  const source = await throttle(() =>
+    client().dataSources.retrieve({ data_source_id: sourceId }),
+  );
+  if (!("properties" in source)) {
+    throw new NotionSchemaError(
+      "Le schéma de la base Déclarations est illisible avec ce token.",
+    );
+  }
+
+  const entries = Object.entries(source.properties).map(([name, property]) => ({
+    name,
+    type: property.type as string,
+  }));
+  const byKey = new Map(entries.map((entry) => [normalizeKey(entry.name), entry]));
+
+  const schema: DeclarationSchema = {
+    titleName: entries.find((entry) => entry.type === "title")?.name ?? null,
+    resolve: (name) =>
+      source.properties[name]
+        ? { name, type: source.properties[name].type as string }
+        : (byKey.get(normalizeKey(name)) ?? null),
+    describe: () =>
+      entries.map((entry) => `${entry.name} (${entry.type})`).join(", "),
+  };
+
+  schemaCache.set(sourceId, schema);
+  return schema;
 }

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { createDeclaration, listClientsForAssistante } from "@/lib/notion";
+import {
+  NotionSchemaError,
+  createDeclaration,
+  listClientsForAssistante,
+} from "@/lib/notion";
 import { readSession } from "@/lib/session";
 import { toTotalMinutes } from "@/lib/time";
 
@@ -87,6 +91,16 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("[win-time] écriture de la déclaration impossible", error);
+
+    // Un schéma qui ne correspond pas ne se règle pas en réessayant : on le dit
+    // plutôt que d'inviter l'assistante à recommencer pour rien.
+    if (error instanceof NotionSchemaError) {
+      return fail(
+        "Un réglage côté Notion empêche l'enregistrement. Préviens-nous, on corrige ça — tes infos restent là.",
+        502,
+      );
+    }
+
     // Statut 502 : le formulaire garde les données saisies et propose de réessayer.
     return fail(
       "L'envoi vers Notion a échoué. Tes infos sont toujours là, réessaie dans un instant.",
