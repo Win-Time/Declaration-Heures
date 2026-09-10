@@ -21,7 +21,10 @@ export async function GET() {
   }
 
   try {
-    const clients = await listClientsForAssistante(assistanteId);
+    const options = await listClientsForAssistante(assistanteId);
+    // On ne renvoie que l'ID du client et son nom : l'ID du contrat reste au
+    // serveur, qui le retrouvera au moment de l'écriture.
+    const clients = options.map(({ id, name }) => ({ id, name }));
     return NextResponse.json({ ok: true, clients });
   } catch (error) {
     console.error("[win-time] récupération des clients impossible", error);

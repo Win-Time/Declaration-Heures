@@ -73,6 +73,7 @@ export async function POST(request: Request) {
       assistanteId,
       clientId: selected.id,
       clientName: selected.name,
+      contratId: selected.contratId,
       start,
       end,
       totalMinutes,

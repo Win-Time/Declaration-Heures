@@ -46,11 +46,18 @@ TypeScript seul.
 | Base | Propriété | Type | Rôle |
 |---|---|---|---|
 | Assistantes | `Téléphone` | Rich text (ou téléphone) | identifiant de connexion |
-| Assistantes | `Clients` | Relation → Clients | clients assignés |
+| Assistantes | `Contrats Clients` | Relation → Contrats | contrats de l'assistante |
+| Contrats | `Client` | Relation → Clients | client couvert par le contrat |
 | Déclarations | `Période de déclaration` | Date (début + fin) | période déclarée |
-| Déclarations | `Assistante déclarante` | Relation → Assistantes | autrice de la déclaration |
+| Déclarations | `Assistante` | Relation → Assistantes | autrice de la déclaration |
+| Déclarations | `Contrat` | Relation → Contrats | contrat concerné |
 | Déclarations | `Client` | Relation → Clients | client concerné |
 | Déclarations | `Total minutes` | Number | temps en minutes entières |
+
+Les clients d'une assistante ne sont pas rattachés directement : on passe par
+ses contrats. Page Assistante → relation `Contrats Clients` → pour chaque
+contrat, sa relation `Client`. La déclaration référence ensuite les trois :
+assistante, contrat et client.
 
 Les noms sont centralisés en haut de `src/lib/notion.ts` : c'est le seul
 endroit à modifier si une propriété est renommée dans Notion.
@@ -63,7 +70,7 @@ endroit à modifier si une propriété est renommée dans Notion.
    dans un cookie httpOnly signé. Non trouvée : message neutre, sans révéler
    si le numéro existe.
 2. **Sélection du client** — les clients de l'assistante uniquement, résolus
-   depuis la relation `Clients` de sa page. Visuel case à cocher, comportement
+   via ses contrats (voir ci-dessus). Visuel case à cocher, comportement
    radio : un seul client par déclaration. La liste est mise en cache pour la
    session : revenir à cette étape ou enchaîner une deuxième déclaration ne
    relance pas l'appel.
@@ -102,6 +109,8 @@ directive est reçue.
 - `GET /api/clients` n'accepte aucun paramètre : la liste est dérivée de la
   session, il n'existe donc pas de moyen de demander les clients d'une autre
   assistante.
+- `GET /api/clients` ne renvoie que l'ID et le nom de chaque client : l'ID du
+  contrat reste au serveur, qui le retrouve lui-même à l'écriture.
 - `POST /api/declaration` revérifie côté serveur que le client déclaré
   appartient bien à l'assistante en session, et revalide période, temps et
   attestation.
@@ -111,6 +120,9 @@ directive est reçue.
 - Téléphone en double dans la base Assistantes : première occurrence retenue,
   avertissement dans les logs serveur.
 - Assistante sans client : message clair, pas d'erreur bloquante.
+- Contrat sans client rattaché : ignoré, avertissement dans les logs.
+- Même client sous deux contrats : le premier contrat est retenu (deux lignes
+  identiques seraient inexploitables), avertissement dans les logs.
 - Rate limit Notion (3 req/s) : toutes les requêtes passent par une file
   d'attente sérialisée avec un écart minimal de 350 ms.
 - Échec d'écriture : on reste sur l'étape d'envoi, la saisie est conservée et

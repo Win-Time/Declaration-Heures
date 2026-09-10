@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import type { ClientOption, DeclarationResult } from "@/lib/notion-types";
+import type { ClientChoice, DeclarationResult } from "@/lib/notion-types";
 
 import { splitDigits } from "./DurationInput";
 import { ProgressSteps } from "./ProgressSteps";
@@ -43,7 +43,7 @@ export function DeclarationWizard() {
   const [identifying, setIdentifying] = useState(false);
   const [phoneError, setPhoneError] = useState<string | null>(null);
 
-  const [clients, setClients] = useState<ClientOption[]>([]);
+  const [clients, setClients] = useState<ClientChoice[]>([]);
   const [clientsLoading, setClientsLoading] = useState(false);
   const [clientsError, setClientsError] = useState<string | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
@@ -83,7 +83,7 @@ export function DeclarationWizard() {
       const response = await fetch("/api/clients", { cache: "no-store" });
       const data = (await response.json()) as {
         ok: boolean;
-        clients?: ClientOption[];
+        clients?: ClientChoice[];
         message?: string;
       };
       if (!response.ok || !data.ok) {

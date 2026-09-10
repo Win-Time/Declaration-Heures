@@ -19,9 +19,13 @@ import { phoneKey } from "./phone";
  */
 
 const PHONE_PROPERTY = "Téléphone";
-const ASSISTANTE_CLIENTS_PROPERTY = "Clients";
+/** Sur la page Assistante : ses contrats, pas ses clients directement. */
+const ASSISTANTE_CONTRATS_PROPERTY = "Contrats Clients";
+/** Sur une page Contrat : le client qu'il concerne. */
+const CONTRAT_CLIENT_PROPERTY = "Client";
 const DECLARATION_PERIODE_PROPERTY = "Période de déclaration";
-const DECLARATION_ASSISTANTE_PROPERTY = "Assistante déclarante";
+const DECLARATION_ASSISTANTE_PROPERTY = "Assistante";
+const DECLARATION_CONTRAT_PROPERTY = "Contrat";
 const DECLARATION_CLIENT_PROPERTY = "Client";
 const DECLARATION_MINUTES_PROPERTY = "Total minutes";
 
@@ -230,20 +234,57 @@ export async function findAssistanteByPhone(
   return { id: matches[0].id };
 }
 
-/** Clients rattachés à une assistante — et rien d'autre. */
+/**
+ * Clients rattachés à une assistante — et rien d'autre.
+ *
+ * Le lien passe par les contrats : page Assistante → relation
+ * « Contrats Clients » → pour chaque contrat, sa relation « Client ». Chaque
+ * option retenue garde l'ID du contrat dont elle vient, car la déclaration
+ * doit référencer les deux.
+ */
 export async function listClientsForAssistante(
   assistanteId: string,
 ): Promise<ClientOption[]> {
   const assistante = await retrievePage(assistanteId);
   if (!assistante) return [];
 
-  const ids = await relationIds(assistante, ASSISTANTE_CLIENTS_PROPERTY);
+  const contratIds = await relationIds(assistante, ASSISTANTE_CONTRATS_PROPERTY);
   const clients: ClientOption[] = [];
+  const seen = new Set<string>();
 
   // Résolution séquentielle : le throttle global garde les 3 req/s de Notion.
-  for (const id of ids) {
-    const page = await retrievePage(id);
-    if (page) clients.push({ id: page.id, name: pageTitle(page) });
+  for (const contratId of contratIds) {
+    const contrat = await retrievePage(contratId);
+    if (!contrat) continue;
+
+    const clientIds = await relationIds(contrat, CONTRAT_CLIENT_PROPERTY);
+    if (clientIds.length === 0) {
+      console.warn(
+        `[win-time] Contrat sans client rattaché, ignoré : ${contratId}`,
+      );
+      continue;
+    }
+
+    for (const clientId of clientIds) {
+      if (seen.has(clientId)) {
+        // Deux contrats pour le même client : on garde le premier, sinon la
+        // liste afficherait deux lignes rigoureusement identiques.
+        console.warn(
+          `[win-time] Client ${clientId} rattaché à plusieurs contrats de l'assistante ${assistanteId}. Contrat retenu : ${clients.find((option) => option.id === clientId)?.contratId}`,
+        );
+        continue;
+      }
+
+      const clientPage = await retrievePage(clientId);
+      if (!clientPage) continue;
+
+      seen.add(clientId);
+      clients.push({
+        id: clientPage.id,
+        name: pageTitle(clientPage),
+        contratId: contrat.id,
+      });
+    }
   }
 
   return clients.sort((a, b) => a.name.localeCompare(b.name, "fr"));
@@ -253,6 +294,7 @@ export async function createDeclaration(input: {
   assistanteId: string;
   clientId: string;
   clientName: string;
+  contratId: string;
   start: string;
   end: string;
   totalMinutes: number;
@@ -267,6 +309,7 @@ export async function createDeclaration(input: {
     [DECLARATION_ASSISTANTE_PROPERTY]: {
       relation: [{ id: input.assistanteId }],
     },
+    [DECLARATION_CONTRAT_PROPERTY]: { relation: [{ id: input.contratId }] },
     [DECLARATION_CLIENT_PROPERTY]: { relation: [{ id: input.clientId }] },
     [DECLARATION_MINUTES_PROPERTY]: { number: input.totalMinutes },
   };

@@ -2,7 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 
-import type { ClientOption } from "@/lib/notion-types";
+import type { ClientChoice } from "@/lib/notion-types";
 import { SPRING_PRESS } from "@/lib/motion-tokens";
 
 import { CheckMark } from "../CheckMark";
@@ -18,7 +18,7 @@ export function StepClient({
   onBack,
   onNext,
 }: {
-  clients: ClientOption[];
+  clients: ClientChoice[];
   loading: boolean;
   error: string | null;
   selectedId: string | null;
