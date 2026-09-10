@@ -120,7 +120,11 @@ directive est reçue.
 - Téléphone en double dans la base Assistantes : première occurrence retenue,
   avertissement dans les logs serveur.
 - Assistante sans client : message clair, pas d'erreur bloquante.
-- Contrat sans client rattaché : ignoré, avertissement dans les logs.
+- Noms de propriétés : la lecture tolère une casse différente, une espace
+  parasite ou un accent manquant, et accepte un rollup là où une relation est
+  attendue.
+- Contrat sans client exploitable : ignoré, avec un avertissement qui liste les
+  propriétés réellement présentes sur la page et leur type.
 - Même client sous deux contrats : le premier contrat est retenu (deux lignes
   identiques seraient inexploitables), avertissement dans les logs.
 - Rate limit Notion (3 req/s) : toutes les requêtes passent par une file

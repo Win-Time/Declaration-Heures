@@ -130,6 +130,42 @@ async function retrievePage(pageId: string): Promise<PageObjectResponse | null> 
 
 /* ────────────────────────── lecture de propriétés ────────────────────────── */
 
+/**
+ * Clé de comparaison d'un nom de propriété : sans accents, sans casse, espaces
+ * normalisés. Un « Client » saisi avec une majuscule différente ou une espace
+ * finale dans Notion reste ainsi trouvable.
+ */
+function normalizeKey(value: string): string {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+/** Propriété d'une page, retrouvée par son nom exact puis par nom normalisé. */
+function findProperty(
+  page: PageObjectResponse,
+  name: string,
+): PageObjectResponse["properties"][string] | undefined {
+  const exact = page.properties[name];
+  if (exact) return exact;
+
+  const target = normalizeKey(name);
+  for (const [key, property] of Object.entries(page.properties)) {
+    if (normalizeKey(key) === target) return property;
+  }
+  return undefined;
+}
+
+/** « Nom (title), Client (rollup) » — pour rendre les logs exploitables. */
+function describeProperties(page: PageObjectResponse): string {
+  return Object.entries(page.properties)
+    .map(([name, property]) => `${name} (${property.type})`)
+    .join(", ");
+}
+
 function richTextToPlain(
   property: PageObjectResponse["properties"][string] | undefined,
 ): string {
@@ -157,14 +193,6 @@ function pageTitle(page: PageObjectResponse): string {
   return "Client sans nom";
 }
 
-function numberOf(page: PageObjectResponse, name: string): number | null {
-  const property = page.properties[name];
-  if (property?.type === "number") return property.number;
-  if (property?.type === "formula" && property.formula.type === "number") {
-    return property.formula.number;
-  }
-  return null;
-}
 
 /**
  * IDs d'une relation. Au-delà de 25 éléments Notion tronque la valeur
@@ -174,8 +202,19 @@ async function relationIds(
   page: PageObjectResponse,
   name: string,
 ): Promise<string[]> {
-  const property = page.properties[name];
-  if (!property || property.type !== "relation") return [];
+  const property = findProperty(page, name);
+  if (!property) return [];
+
+  // Une propriété qui affiche des pages liées n'est pas toujours une relation :
+  // ce peut être un rollup qui remonte la relation d'une autre base.
+  if (property.type === "rollup") {
+    if (property.rollup.type !== "array") return [];
+    return property.rollup.array.flatMap((item) =>
+      item.type === "relation" ? item.relation.map((page) => page.id) : [],
+    );
+  }
+
+  if (property.type !== "relation") return [];
 
   const ids = property.relation.map((item) => item.id);
   // Notion tronque la relation embarquée au-delà de 25 éléments et signale la
@@ -222,7 +261,7 @@ export async function findAssistanteByPhone(
 
   const pages = await queryAll(env("NOTION_DB_ASSISTANTES"));
   const matches = pages.filter(
-    (page) => phoneKey(richTextToPlain(page.properties[PHONE_PROPERTY])) === key,
+    (page) => phoneKey(richTextToPlain(findProperty(page, PHONE_PROPERTY))) === key,
   );
 
   if (matches.length === 0) return null;
@@ -259,8 +298,10 @@ export async function listClientsForAssistante(
 
     const clientIds = await relationIds(contrat, CONTRAT_CLIENT_PROPERTY);
     if (clientIds.length === 0) {
+      // Le détail des propriétés évite d'avoir à deviner : il nomme ce que la
+      // page expose réellement et sous quel type.
       console.warn(
-        `[win-time] Contrat sans client rattaché, ignoré : ${contratId}`,
+        `[win-time] Contrat ${contratId} ignoré : rien à lire dans « ${CONTRAT_CLIENT_PROPERTY} ». Propriétés de la page : ${describeProperties(contrat)}`,
       );
       continue;
     }
