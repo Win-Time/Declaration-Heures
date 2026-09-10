@@ -52,7 +52,20 @@ TypeScript seul.
 | Déclarations | `Assistante` | Relation → Assistantes | autrice de la déclaration |
 | Déclarations | `Contrat` | Relation → Contrats | contrat concerné |
 | Déclarations | `Client` | Relation → Clients | client concerné |
-| Déclarations | `Total minutes` | Number | temps en minutes entières |
+| Déclarations | `Minutes déclarées` | Number | temps en minutes entières |
+
+Ces noms sont ceux configurés par défaut dans `src/lib/notion-properties.ts`.
+Ils ne servent que de repli : chaque propriété se désigne d'abord par son
+**ID Notion**, qui ne change pas quand la propriété est renommée. Les IDs se
+lisent avec :
+
+```bash
+npm run notion:props            # ou : node --env-file=.env.local scripts/notion-properties.mjs
+```
+
+Le script liste chaque propriété avec son ID et affiche les lignes
+`NOTION_PROP_…=` à coller dans les variables d'environnement. Une fois
+renseignées, un renommage dans Notion n'a plus aucun effet sur le formulaire.
 
 Les clients d'une assistante ne sont pas rattachés directement : on passe par
 ses contrats. Page Assistante → relation `Contrats Clients` → pour chaque
@@ -120,11 +133,10 @@ directive est reçue.
 - Téléphone en double dans la base Assistantes : première occurrence retenue,
   avertissement dans les logs serveur.
 - Assistante sans client : message clair, pas d'erreur bloquante.
-- Noms de propriétés : la lecture tolère une casse différente, une espace
-  parasite ou un accent manquant, et accepte un rollup là où une relation est
-  attendue. À l'écriture, Notion exige le nom exact : les propriétés sont donc
-  résolues contre le schéma de la base Déclarations, avec la même tolérance,
-  puis écrites sous leur nom réel.
+- Renommage d'une propriété dans Notion : sans effet si son ID est renseigné.
+  À défaut, la résolution retombe sur le nom, en tolérant casse, accents et
+  espaces, et accepte un rollup là où une relation est attendue. Les
+  déclarations sont toujours écrites en désignant les propriétés par leur ID.
 - Schéma de la base Déclarations incompatible (propriété absente ou d'un autre
   type) : l'envoi échoue avec un message qui dit que c'est un réglage à
   corriger, et non de réessayer ; le log nomme la propriété fautive et liste

@@ -7,7 +7,14 @@ import type {
 } from "@notionhq/client";
 
 import type { ClientOption } from "./notion-types";
-import { phoneKey } from "./phone";
+import {
+  ASSISTANTE_PROPS,
+  CONTRAT_PROPS,
+  DECLARATION_PROPS,
+  type PropertyRef,
+  describeRef,
+} from "./notion-properties";
+import { digitsOnly, phoneKey } from "./phone";
 
 /**
  * Accès Notion — exclusivement côté serveur.
@@ -18,16 +25,6 @@ import { phoneKey } from "./phone";
  * cache) la data source correspondante au premier appel.
  */
 
-const PHONE_PROPERTY = "Téléphone";
-/** Sur la page Assistante : ses contrats, pas ses clients directement. */
-const ASSISTANTE_CONTRATS_PROPERTY = "Contrats Clients";
-/** Sur une page Contrat : le client qu'il concerne. */
-const CONTRAT_CLIENT_PROPERTY = "Client";
-const DECLARATION_PERIODE_PROPERTY = "Période de déclaration";
-const DECLARATION_ASSISTANTE_PROPERTY = "Assistante";
-const DECLARATION_CONTRAT_PROPERTY = "Contrat";
-const DECLARATION_CLIENT_PROPERTY = "Client";
-const DECLARATION_MINUTES_PROPERTY = "Total minutes";
 
 /** Notion tolère 3 requêtes/seconde : on sérialise avec un écart minimum. */
 const MIN_REQUEST_GAP_MS = 350;
@@ -144,25 +141,34 @@ function normalizeKey(value: string): string {
     .toLowerCase();
 }
 
-/** Propriété d'une page, retrouvée par son nom exact puis par nom normalisé. */
+/**
+ * Propriété d'une page, retrouvée d'abord par ID — insensible aux renommages —
+ * puis par nom exact, puis par nom normalisé.
+ */
 function findProperty(
   page: PageObjectResponse,
-  name: string,
+  reference: PropertyRef,
 ): PageObjectResponse["properties"][string] | undefined {
-  const exact = page.properties[name];
+  if (reference.id) {
+    for (const property of Object.values(page.properties)) {
+      if (property.id === reference.id) return property;
+    }
+  }
+
+  const exact = page.properties[reference.name];
   if (exact) return exact;
 
-  const target = normalizeKey(name);
+  const target = normalizeKey(reference.name);
   for (const [key, property] of Object.entries(page.properties)) {
     if (normalizeKey(key) === target) return property;
   }
   return undefined;
 }
 
-/** « Nom (title), Client (rollup) » — pour rendre les logs exploitables. */
+/** « Client (relation, id abc123) » — pour rendre les logs exploitables. */
 function describeProperties(page: PageObjectResponse): string {
   return Object.entries(page.properties)
-    .map(([name, property]) => `${name} (${property.type})`)
+    .map(([name, property]) => `${name} (${property.type}, id ${property.id})`)
     .join(", ");
 }
 
@@ -200,9 +206,9 @@ function pageTitle(page: PageObjectResponse): string {
  */
 async function relationIds(
   page: PageObjectResponse,
-  name: string,
+  reference: PropertyRef,
 ): Promise<string[]> {
-  const property = findProperty(page, name);
+  const property = findProperty(page, reference);
   if (!property) return [];
 
   // Une propriété qui affiche des pages liées n'est pas toujours une relation :
@@ -261,10 +267,24 @@ export async function findAssistanteByPhone(
 
   const pages = await queryAll(env("NOTION_DB_ASSISTANTES"));
   const matches = pages.filter(
-    (page) => phoneKey(richTextToPlain(findProperty(page, PHONE_PROPERTY))) === key,
+    (page) =>
+      phoneKey(richTextToPlain(findProperty(page, ASSISTANTE_PROPS.telephone))) ===
+      key,
   );
 
-  if (matches.length === 0) return null;
+  if (matches.length === 0) {
+    // Si aucune page n'expose de téléphone lisible, ce n'est pas que le numéro
+    // est inconnu : c'est la propriété qui n'est pas trouvée.
+    const readable = pages.filter(
+      (page) => digitsOnly(richTextToPlain(findProperty(page, ASSISTANTE_PROPS.telephone))).length > 0,
+    );
+    if (pages.length > 0 && readable.length === 0) {
+      console.warn(
+        `[win-time] Aucune assistante n'expose de téléphone lisible via ${describeRef(ASSISTANTE_PROPS.telephone)}. Propriétés de la première page : ${describeProperties(pages[0])}`,
+      );
+    }
+    return null;
+  }
   if (matches.length > 1) {
     console.warn(
       `[win-time] Téléphone en double dans la base Assistantes (${matches.length} occurrences, clé …${key.slice(-4)}). Première occurrence retenue : ${matches[0].id}`,
@@ -287,7 +307,7 @@ export async function listClientsForAssistante(
   const assistante = await retrievePage(assistanteId);
   if (!assistante) return [];
 
-  const contratIds = await relationIds(assistante, ASSISTANTE_CONTRATS_PROPERTY);
+  const contratIds = await relationIds(assistante, ASSISTANTE_PROPS.contrats);
   const clients: ClientOption[] = [];
   const seen = new Set<string>();
 
@@ -296,12 +316,12 @@ export async function listClientsForAssistante(
     const contrat = await retrievePage(contratId);
     if (!contrat) continue;
 
-    const clientIds = await relationIds(contrat, CONTRAT_CLIENT_PROPERTY);
+    const clientIds = await relationIds(contrat, CONTRAT_PROPS.client);
     if (clientIds.length === 0) {
       // Le détail des propriétés évite d'avoir à deviner : il nomme ce que la
       // page expose réellement et sous quel type.
       console.warn(
-        `[win-time] Contrat ${contratId} ignoré : rien à lire dans « ${CONTRAT_CLIENT_PROPERTY} ». Propriétés de la page : ${describeProperties(contrat)}`,
+        `[win-time] Contrat ${contratId} ignoré : rien à lire dans ${describeRef(CONTRAT_PROPS.client)}. Propriétés de la page : ${describeProperties(contrat)}`,
       );
       continue;
     }
@@ -349,46 +369,46 @@ export async function createDeclaration(input: {
   const mistyped: string[] = [];
 
   /**
-   * Écrit une propriété sous son nom réel dans Notion.
+   * Écrit une propriété en la désignant par son ID.
    *
-   * À l'écriture, contrairement à la lecture, Notion exige le nom exact : on
-   * résout donc chaque propriété contre le schéma de la base, en tolérant les
-   * écarts de casse, d'accent et d'espaces.
+   * Notion accepte comme clé du payload le nom ou l'ID de la propriété. On
+   * utilise l'ID : c'est la seule désignation qui survit à un renommage.
    */
-  const put = (name: string, expectedType: string, value: unknown) => {
-    const found = schema.resolve(name);
+  const put = (
+    reference: PropertyRef & { type: string },
+    value: unknown,
+  ) => {
+    const found = schema.resolve(reference);
     if (!found) {
-      missing.push(name);
+      missing.push(describeRef(reference));
       return;
     }
-    if (found.type !== expectedType) {
-      mistyped.push(`« ${found.name} » est de type ${found.type}, attendu ${expectedType}`);
+    if (found.type !== reference.type) {
+      mistyped.push(
+        `« ${found.name} » est de type ${found.type}, attendu ${reference.type}`,
+      );
       return;
     }
-    properties[found.name] = value;
+    properties[found.id] = value;
   };
 
-  put(DECLARATION_PERIODE_PROPERTY, "date", {
+  put(DECLARATION_PROPS.periode, {
     date: { start: input.start, end: input.end },
   });
-  put(DECLARATION_ASSISTANTE_PROPERTY, "relation", {
+  put(DECLARATION_PROPS.assistante, {
     relation: [{ id: input.assistanteId }],
   });
-  put(DECLARATION_CONTRAT_PROPERTY, "relation", {
-    relation: [{ id: input.contratId }],
-  });
-  put(DECLARATION_CLIENT_PROPERTY, "relation", {
-    relation: [{ id: input.clientId }],
-  });
-  put(DECLARATION_MINUTES_PROPERTY, "number", { number: input.totalMinutes });
+  put(DECLARATION_PROPS.contrat, { relation: [{ id: input.contratId }] });
+  put(DECLARATION_PROPS.client, { relation: [{ id: input.clientId }] });
+  put(DECLARATION_PROPS.minutes, { number: input.totalMinutes });
 
   if (missing.length > 0 || mistyped.length > 0) {
     throw new NotionSchemaError(
       [
         missing.length > 0
-          ? `Propriétés introuvables dans la base Déclarations : ${missing.map((name) => `« ${name} »`).join(", ")}.`
+          ? `Propriétés introuvables dans la base Déclarations : ${missing.join(", ")}.`
           : null,
-        mistyped.length > 0 ? mistyped.join(" ; ") + "." : null,
+        mistyped.length > 0 ? `${mistyped.join(" ; ")}.` : null,
         `Propriétés de la base : ${schema.describe()}`,
       ]
         .filter(Boolean)
@@ -396,8 +416,8 @@ export async function createDeclaration(input: {
     );
   }
 
-  if (schema.titleName) {
-    properties[schema.titleName] = {
+  if (schema.titleId) {
+    properties[schema.titleId] = {
       title: [
         {
           text: { content: `${input.clientName} — ${input.start} → ${input.end}` },
@@ -429,12 +449,14 @@ export class NotionSchemaError extends Error {
   }
 }
 
+type SchemaEntry = { id: string; name: string; type: string };
+
 type DeclarationSchema = {
-  /** Nom de la propriété `title`, quel qu'il soit. */
-  titleName: string | null;
-  /** Nom et type réels d'une propriété, à partir d'un nom approchant. */
-  resolve: (name: string) => { name: string; type: string } | null;
-  /** « Nom (title), Minutes (number) » — pour les messages d'erreur. */
+  /** ID de la propriété `title`, quel que soit son nom. */
+  titleId: string | null;
+  /** Propriété réelle correspondant à une référence (ID d'abord, puis nom). */
+  resolve: (reference: PropertyRef) => SchemaEntry | null;
+  /** « Nom (title, id title) » — pour les messages d'erreur. */
   describe: () => string;
 };
 
@@ -454,20 +476,28 @@ async function declarationSchema(sourceId: string): Promise<DeclarationSchema> {
     );
   }
 
-  const entries = Object.entries(source.properties).map(([name, property]) => ({
-    name,
-    type: property.type as string,
-  }));
+  const entries: SchemaEntry[] = Object.entries(source.properties).map(
+    ([name, property]) => ({
+      id: property.id as string,
+      name,
+      type: property.type as string,
+    }),
+  );
+  const byId = new Map(entries.map((entry) => [entry.id, entry]));
+  const byExactName = new Map(entries.map((entry) => [entry.name, entry]));
   const byKey = new Map(entries.map((entry) => [normalizeKey(entry.name), entry]));
 
   const schema: DeclarationSchema = {
-    titleName: entries.find((entry) => entry.type === "title")?.name ?? null,
-    resolve: (name) =>
-      source.properties[name]
-        ? { name, type: source.properties[name].type as string }
-        : (byKey.get(normalizeKey(name)) ?? null),
+    titleId: entries.find((entry) => entry.type === "title")?.id ?? null,
+    resolve: (reference) =>
+      (reference.id ? byId.get(reference.id) : undefined) ??
+      byExactName.get(reference.name) ??
+      byKey.get(normalizeKey(reference.name)) ??
+      null,
     describe: () =>
-      entries.map((entry) => `${entry.name} (${entry.type})`).join(", "),
+      entries
+        .map((entry) => `${entry.name} (${entry.type}, id ${entry.id})`)
+        .join(", "),
   };
 
   schemaCache.set(sourceId, schema);
