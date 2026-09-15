@@ -48,6 +48,7 @@ TypeScript seul.
 | Assistantes | `Téléphone` | Phone number | identifiant de connexion |
 | Assistantes | `Contrats Clients` | Relation → Contrats Clients | contrats de l'assistante |
 | Contrats Clients | `Client` | Relation → Clients | client couvert par le contrat |
+| Contrats Clients | `Forfait (h)` | Number | volume mensuel prévu, seuil de l'alerte |
 | Heures déclarées | `Nom du client` | Title | nom du client |
 | Heures déclarées | `Période de déclaration` | Date (début + fin) | période déclarée |
 | Heures déclarées | `Assistante` | Relation → Assistantes | autrice de la déclaration |
@@ -103,6 +104,27 @@ endroit à modifier si une propriété est renommée dans Notion.
 4. **Attestation** — case obligatoire avant activation de l'envoi.
 5. **Confirmation** — récapitulatif de ce qui vient d'être enregistré, et
    possibilité d'enchaîner sur un autre client.
+
+## Alerte d'approche du forfait
+
+Après l'écriture d'une déclaration, le serveur cumule le temps déclaré sur le
+contrat pour le **mois de la période déclarée** — une déclaration d'août faite
+en septembre alerte sur août — et le compare au `Forfait (h)` du contrat. Quand
+il reste 10 % ou moins, un commentaire est posé sur la page du contrat, en
+mentionnant la destinataire (`NOTION_ALERT_USER_ID`, Vanessa CAUCHOIS par
+défaut) :
+
+> @Vanessa, les heures déclarées approche la limite définit. Il reste 2h sur
+> les 25h prévues pour le mois d'août.
+
+Au-delà du forfait, la même alerte annonce le dépassement plutôt qu'un reste
+négatif. Un commentaire identique déjà ouvert sur la page n'est pas reposté, et
+rien n'est publié si le contrat n'a pas de `Forfait (h)`.
+
+L'alerte tourne après la réponse HTTP (`after()`) : elle n'ajoute aucune attente
+pour l'assistante, et son échec ne compromet jamais la déclaration, déjà
+écrite. L'intégration Notion doit disposer de la capacité « insérer des
+commentaires ».
 
 ## Partage et référencement
 

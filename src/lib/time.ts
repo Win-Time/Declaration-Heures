@@ -31,3 +31,35 @@ export function todayIso(timeZone: string = PARIS_TZ): string {
     day: "2-digit",
   }).format(new Date());
 }
+
+/**
+ * Bornes du mois calendaire contenant la date donnée, au format YYYY-MM-DD —
+ * celui qu'attendent les filtres date de Notion.
+ */
+export function monthRangeOf(iso: string): { start: string; end: string } {
+  const [year, month] = iso.split("-").map(Number);
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const mm = String(month).padStart(2, "0");
+  return {
+    start: `${year}-${mm}-01`,
+    end: `${year}-${mm}-${String(lastDay).padStart(2, "0")}`,
+  };
+}
+
+/** "2026-08-14" -> "août". */
+export function monthNameFr(iso: string): string {
+  const [year, month, day] = iso.split("-").map(Number);
+  return new Intl.DateTimeFormat("fr-FR", {
+    month: "long",
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, day || 1)));
+}
+
+/**
+ * « le mois de septembre », mais « le mois d'août » : les mois commençant par
+ * une voyelle imposent l'élision.
+ */
+export function monthOfFr(iso: string): string {
+  const name = monthNameFr(iso);
+  return /^[aeiouâéèêîôû]/i.test(name) ? `d'${name}` : `de ${name}`;
+}

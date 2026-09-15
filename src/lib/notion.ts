@@ -8,6 +8,8 @@ import type {
 
 import type { ClientOption } from "./notion-types";
 import {
+  ALERT_THRESHOLD_RATIO,
+  ALERT_USER,
   ASSISTANTE_PROPS,
   CONTRAT_PROPS,
   DECLARATION_PROPS,
@@ -15,6 +17,7 @@ import {
   describeRef,
 } from "./notion-properties";
 import { digitsOnly, phoneKey } from "./phone";
+import { formatMinutes, monthNameFr, monthOfFr, monthRangeOf } from "./time";
 
 /**
  * Accès Notion — exclusivement côté serveur.
@@ -199,6 +202,19 @@ function pageTitle(page: PageObjectResponse): string {
   return "Client sans nom";
 }
 
+
+/** Valeur numérique d'une propriété, via sa référence. */
+function numberOf(
+  page: PageObjectResponse,
+  reference: PropertyRef,
+): number | null {
+  const property = findProperty(page, reference);
+  if (property?.type === "number") return property.number;
+  if (property?.type === "formula" && property.formula.type === "number") {
+    return property.formula.number;
+  }
+  return null;
+}
 
 /**
  * IDs d'une relation. Au-delà de 25 éléments Notion tronque la valeur
@@ -504,4 +520,152 @@ async function declarationSchema(sourceId: string): Promise<DeclarationSchema> {
 
   schemaCache.set(sourceId, schema);
   return schema;
+}
+
+/* ───────────────── Alerte d'approche du forfait mensuel ───────────────── */
+
+/**
+ * Après création d'une déclaration : cumule le temps déclaré sur ce contrat
+ * pour le mois de la période déclarée, le compare au `Forfait (h)` du contrat,
+ * et pose un commentaire sur la page du contrat quand il reste 10 % ou moins.
+ *
+ * Le mois retenu est celui de la **période déclarée**, pas celui de la saisie :
+ * une déclaration d'août faite en septembre alerte sur août.
+ *
+ * Aucune erreur ne remonte : une alerte manquée ne doit jamais compromettre
+ * une déclaration déjà écrite.
+ */
+export async function alertIfNearContractLimit(input: {
+  contratId: string;
+  /** Page qui vient d'être créée, pour garantir qu'elle est bien comptée. */
+  declarationPageId: string;
+  declarationMinutes: number;
+  /** Date de début de la période déclarée. */
+  start: string;
+}): Promise<void> {
+  try {
+    const contrat = await retrievePage(input.contratId);
+    if (!contrat) return;
+
+    const forfaitHours = numberOf(contrat, CONTRAT_PROPS.forfait);
+    if (typeof forfaitHours !== "number" || forfaitHours <= 0) {
+      console.info(
+        `[win-time] Pas d'alerte : ${describeRef(CONTRAT_PROPS.forfait)} non renseigné sur le contrat ${input.contratId}.`,
+      );
+      return;
+    }
+
+    const limitMinutes = Math.round(forfaitHours * 60);
+    const consumedMinutes = await sumContractMonthMinutes(input);
+    const remainingMinutes = limitMinutes - consumedMinutes;
+
+    if (remainingMinutes > limitMinutes * ALERT_THRESHOLD_RATIO) return;
+
+    const monthName = monthNameFr(input.start);
+    const month = monthOfFr(input.start);
+    const body =
+      remainingMinutes >= 0
+        ? `, les heures déclarées approche la limite définit. Il reste ${formatMinutes(remainingMinutes)} sur les ${forfaitHours}h prévues pour le mois ${month}.`
+        : `, les heures déclarées dépassent la limite définit de ${formatMinutes(-remainingMinutes)} sur les ${forfaitHours}h prévues pour le mois ${month}.`;
+
+    if (await hasSimilarComment(input.contratId, body)) {
+      console.info(
+        `[win-time] Alerte déjà posée sur le contrat ${input.contratId} pour ${monthName}.`,
+      );
+      return;
+    }
+
+    await throttle(() =>
+      client().comments.create({
+        parent: { page_id: input.contratId },
+        rich_text: [
+          {
+            type: "mention",
+            mention: { type: "user", user: { id: ALERT_USER.id } },
+          },
+          { type: "text", text: { content: body } },
+        ],
+      }),
+    );
+
+    console.info(
+      `[win-time] Alerte forfait posée sur le contrat ${input.contratId} (${consumedMinutes}/${limitMinutes} min, ${monthName}).`,
+    );
+  } catch (error) {
+    const code = (error as { code?: string }).code;
+    if (code === "restricted_resource" || code === "unauthorized") {
+      console.error(
+        "[win-time] alerte de forfait refusée par Notion : l'intégration doit avoir la capacité « insérer des commentaires » et accéder à la base Contrats Clients.",
+        error,
+      );
+      return;
+    }
+    console.error("[win-time] alerte de forfait impossible", error);
+  }
+}
+
+/** Minutes déclarées sur un contrat pour le mois de la période donnée. */
+async function sumContractMonthMinutes(input: {
+  contratId: string;
+  declarationPageId: string;
+  declarationMinutes: number;
+  start: string;
+}): Promise<number> {
+  const databaseId = env("NOTION_DB_DECLARATIONS");
+  const sourceId = await dataSourceId(databaseId);
+  const schema = await declarationSchema(sourceId);
+
+  const contratProperty = schema.resolve(DECLARATION_PROPS.contrat);
+  const periodeProperty = schema.resolve(DECLARATION_PROPS.periode);
+  const minutesProperty = schema.resolve(DECLARATION_PROPS.minutes);
+  if (!contratProperty || !periodeProperty || !minutesProperty) {
+    throw new NotionSchemaError(
+      `Alerte impossible, propriétés manquantes dans la base Déclarations : ${schema.describe()}`,
+    );
+  }
+
+  const month = monthRangeOf(input.start);
+  const pages = await queryAll(databaseId, {
+    and: [
+      {
+        property: contratProperty.id,
+        relation: { contains: input.contratId },
+      },
+      { property: periodeProperty.id, date: { on_or_after: month.start } },
+      { property: periodeProperty.id, date: { on_or_before: month.end } },
+    ],
+  } as QueryDataSourceParameters["filter"]);
+
+  let total = pages.reduce(
+    (sum, page) => sum + (numberOf(page, DECLARATION_PROPS.minutes) ?? 0),
+    0,
+  );
+
+  // Notion peut ne pas encore indexer la page tout juste créée : on l'ajoute
+  // nous-mêmes si la requête ne l'a pas vue.
+  const counted = pages.some((page) => page.id === input.declarationPageId);
+  if (!counted) total += input.declarationMinutes;
+
+  return total;
+}
+
+/** Une alerte au texte identique est-elle déjà ouverte sur cette page ? */
+async function hasSimilarComment(pageId: string, body: string): Promise<boolean> {
+  let cursor: string | undefined;
+  do {
+    const response = await throttle(() =>
+      client().comments.list({
+        block_id: pageId,
+        page_size: 100,
+        start_cursor: cursor,
+      }),
+    );
+    for (const comment of response.results) {
+      if (!("rich_text" in comment)) continue;
+      const text = comment.rich_text.map((item) => item.plain_text).join("");
+      if (text.includes(body)) return true;
+    }
+    cursor = response.has_more ? (response.next_cursor ?? undefined) : undefined;
+  } while (cursor);
+  return false;
 }

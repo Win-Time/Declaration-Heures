@@ -35,10 +35,28 @@ export const ASSISTANTE_PROPS = {
   ]),
 } as const;
 
-/** Propriété lue sur la page d'un contrat. */
+/** Propriétés lues sur la page d'un contrat. */
 export const CONTRAT_PROPS = {
   client: ref("NOTION_PROP_CONTRAT_CLIENT", "Client", ["Clients"]),
+  /** Volume d'heures mensuel prévu au contrat : c'est le seuil d'alerte. */
+  forfait: ref("NOTION_PROP_FORFAIT", "Forfait (h)", ["Forfait"]),
 } as const;
+
+/**
+ * Personne mentionnée dans l'alerte de dépassement, sur la page du contrat.
+ * L'ID est celui d'un membre du workspace ; il est surchargeable au cas où la
+ * destinataire change.
+ */
+export const ALERT_USER = {
+  name: "Vanessa CAUCHOIS",
+  id: process.env.NOTION_ALERT_USER_ID?.trim() ||
+    "6476bd2a-a668-4fd6-aa8d-5d113fc4f249",
+} as const;
+
+/**
+ * On alerte quand le temps restant descend à 10 % ou moins du forfait mensuel.
+ */
+export const ALERT_THRESHOLD_RATIO = 0.1;
 
 /**
  * Propriétés écrites sur une déclaration, avec le type Notion attendu.

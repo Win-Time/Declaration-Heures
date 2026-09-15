@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, after } from "next/server";
 
 import {
   NotionSchemaError,
+  alertIfNearContractLimit,
   createDeclaration,
   listClientsForAssistante,
 } from "@/lib/notion";
@@ -83,6 +84,18 @@ export async function POST(request: Request) {
       end,
       totalMinutes,
     });
+
+    // L'alerte de forfait tourne après la réponse : elle enchaîne plusieurs
+    // appels Notion, et l'assistante n'a pas à les attendre. Un échec y est
+    // journalisé sans conséquence sur la déclaration, déjà écrite.
+    after(() =>
+      alertIfNearContractLimit({
+        contratId: selected.contratId,
+        declarationPageId: declarationId,
+        declarationMinutes: totalMinutes,
+        start,
+      }),
+    );
 
     return NextResponse.json({
       ok: true,
